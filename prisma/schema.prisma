@@ -112,6 +112,11 @@ model Post {
   authorId String @map("author_id")
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
+  // Versioning relation (for draft versions of published posts)
+  parentPostId String? @map("parent_post_id")
+  parentPost   Post?   @relation("PostVersions", fields: [parentPostId], references: [id])
+  versions     Post[]  @relation("PostVersions")
+
   // Category and tag relations
   categories CategoryOnPost[]
   tags       TagOnPost[]
