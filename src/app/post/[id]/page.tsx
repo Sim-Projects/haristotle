@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -13,11 +14,19 @@ import { Separator } from '@/components/ui/separator'
 import { Card, CardContent } from '@/components/ui/card'
 import { DynamicBlockNoteEditor as BlockNoteEditor } from '@/components/editor/dynamic-block-note-editor'
 import { ArticleCard } from '@/components/blog/article-card'
-import { useAuth } from '@/hooks/use-auth'
-import { Clock, Calendar, Heart, MessageCircle, Bookmark, Share2, Twitter, Facebook, Linkedin } from 'lucide-react'
+import { 
+  Clock, 
+  Calendar, 
+  Heart, 
+  MessageCircle, 
+  Bookmark, 
+  Share2, 
+  Edit,
+  AlertTriangle
+} from 'lucide-react'
 
 interface ArticlePageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ id: string }>
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
@@ -26,13 +35,13 @@ export default function ArticlePage({ params }: ArticlePageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const { requireAuth } = useAuth()
+  const { data: session } = useSession()
 
   useEffect(() => {
     async function fetchPost() {
       try {
-        const { slug } = await params
-        const response = await fetch(`/api/posts/by-slug/${slug}`)
+        const { id } = await params
+        const response = await fetch(`/api/posts/${id}`)
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -62,30 +71,21 @@ export default function ArticlePage({ params }: ArticlePageProps) {
     }
 
     fetchPost()
-  }, [params, router])
+  }, [params])
 
   const handleLike = () => {
-    requireAuth({
-      title: "Sign in to like this post",
-      description: "Create an account or sign in to like posts and interact with the community.",
-      callbackUrl: window.location.pathname,
-    })
+    // TODO: Implement like functionality
+    console.log('Like clicked')
   }
 
   const handleComment = () => {
-    requireAuth({
-      title: "Sign in to comment",
-      description: "Create an account or sign in to comment on posts and join the conversation.",
-      callbackUrl: window.location.pathname,
-    })
+    // TODO: Implement comment functionality
+    console.log('Comment clicked')
   }
 
   const handleBookmark = () => {
-    requireAuth({
-      title: "Sign in to bookmark this post",
-      description: "Create an account or sign in to bookmark posts and save them for later.",
-      callbackUrl: window.location.pathname,
-    })
+    // TODO: Implement bookmark functionality
+    console.log('Bookmark clicked')
   }
 
   if (loading) {
@@ -108,6 +108,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
         <Header />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-600 mb-4">{error || 'Post not found'}</p>
             <button onClick={() => router.back()} className="underline">
               Go back
@@ -122,9 +123,32 @@ export default function ArticlePage({ params }: ArticlePageProps) {
   const timeAgo = formatDistanceToNow(publishedAt, { addSuffix: true })
   const formattedDate = format(publishedAt, 'MMMM d, yyyy')
 
+  // Check if user can edit this post
+  const canEdit = session?.user?.id === post.authorId
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Edit Button for Author */}
+      {canEdit && (
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Edit className="h-5 w-5 text-blue-600" />
+                <span className="text-blue-800 font-medium">You can edit this post</span>
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/write/${post.id}`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Post
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <article className="bg-white">
         {/* Hero Section */}
@@ -147,7 +171,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
           <div className="container mx-auto px-4 max-w-4xl">
             <div className="py-12 relative z-10">
               {/* Categories */}
-              {post.categories.length > 0 && (
+              {post.categories?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {post.categories.map(({ category }: any) => (
                     <Badge
@@ -201,7 +225,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                           <span>{post.readingTime} min read</span>
                         </div>
                       )}
-                      <span>{post._count.views} views</span>
+                      <span>{post.viewCount || 0} views</span>
                     </div>
                   </div>
                 </div>
@@ -210,11 +234,11 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                 <div className="flex items-center space-x-2">
                   <Button variant="ghost" size="sm" onClick={handleLike}>
                     <Heart className="h-4 w-4 mr-1" />
-                    {post._count.likes}
+                    {post._count?.likes || 0}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleComment}>
                     <MessageCircle className="h-4 w-4 mr-1" />
-                    {post._count.comments}
+                    {post._count?.comments || 0}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={handleBookmark}>
                     <Bookmark className="h-4 w-4" />
@@ -233,17 +257,24 @@ export default function ArticlePage({ params }: ArticlePageProps) {
         {/* Article Content */}
         <div className="container mx-auto px-4 max-w-4xl py-12">
           <div className="prose prose-lg max-w-none">
-            <BlockNoteEditor
-              initialContent={JSON.stringify(post.content)}
-              editable={false}
-            />
+            {post.content ? (
+              <BlockNoteEditor
+                initialContent={post.content}
+                editable={false}
+              />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg mb-2">No content available</p>
+                <p className="text-sm">This post appears to be empty</p>
+              </div>
+            )}
           </div>
         </div>
         
         <Separator />
         
         {/* Tags */}
-        {post.tags.length > 0 && (
+        {post.tags?.length > 0 && (
           <div className="container mx-auto px-4 max-w-4xl py-8">
             <div className="flex flex-wrap gap-2">
               {post.tags.map(({ tag }: any) => (
@@ -285,22 +316,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                       <Button variant="outline" size="sm" asChild>
                         <Link href={post.author.website} target="_blank" rel="noopener noreferrer">
                           Website
-                        </Link>
-                      </Button>
-                    )}
-                    {post.author.twitter && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`https://twitter.com/${post.author.twitter}`} target="_blank" rel="noopener noreferrer">
-                          <Twitter className="h-4 w-4 mr-1" />
-                          Twitter
-                        </Link>
-                      </Button>
-                    )}
-                    {post.author.linkedin && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={post.author.linkedin} target="_blank" rel="noopener noreferrer">
-                          <Linkedin className="h-4 w-4 mr-1" />
-                          LinkedIn
                         </Link>
                       </Button>
                     )}

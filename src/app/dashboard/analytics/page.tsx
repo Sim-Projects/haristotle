@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
                   <div key={post.id} className="flex items-center justify-between">
                     <div className="flex-1">
                       <Link 
-                        href={`/${post.slug}`}
+                        href={`/post/${post.id}`}
                         className="font-medium hover:underline line-clamp-1"
                       >
                         {post.title}
@@ -328,7 +328,7 @@ export default function AnalyticsPage() {
                   <TableRow key={post.id}>
                     <TableCell>
                       <Link 
-                        href={`/${post.slug}`}
+                        href={`/post/${post.id}`}
                         className="font-medium hover:underline"
                       >
                         {post.title}

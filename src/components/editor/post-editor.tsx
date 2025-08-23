@@ -143,7 +143,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       toast.success('Post published successfully!')
       
       // Navigate to the published post
-      router.push(`/${publishedPost.slug}`)
+      router.push(`/post/${publishedPost.id}`)
     } catch (error) {
       console.error('Publish error:', error)
       toast.error('Failed to publish post')
@@ -154,12 +154,12 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
   // Preview function
   const handlePreview = useCallback(() => {
-    if (post?.slug) {
-      window.open(`/preview/${post.slug}`, '_blank')
+    if (post?.id) {
+      window.open(`/preview/${post.id}`, '_blank')
     } else {
       toast.error('Save the post first to preview')
     }
-  }, [post?.slug])
+  }, [post?.id])
 
   return (
     <div className="min-h-screen bg-gray-50">

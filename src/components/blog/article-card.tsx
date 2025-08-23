@@ -59,7 +59,7 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
           )}
           
           {/* Content */}
-          <div className="p-6 flex flex-col justify-between">
+          <div className="p-4 flex flex-col justify-between">
             <div>
               {/* Categories */}
               {post.categories.length > 0 && (
@@ -78,7 +78,7 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
               )}
 
               {/* Title */}
-              <Link href={`/${post.slug}`}>
+              <Link href={`/post/${post.id}`}>
                 <h2 className="text-2xl font-bold mb-3 line-clamp-2 hover:text-primary cursor-pointer">
                   {post.title}
                 </h2>
@@ -107,11 +107,11 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-3 text-sm text-muted-foreground">
                 {post.readingTime && (
-                  <div className="flex items-center space-x-1">
+                  <div className="flex items-center space-x-1 whitespace-nowrap">
                     <Clock className="h-3 w-3" />
-                    <span>{post.readingTime} min</span>
+                    <span>{post.readingTime}m</span>
                   </div>
                 )}
                 <div className="flex items-center space-x-1">
@@ -147,7 +147,7 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
             )}
             
             <div className="flex-1 min-w-0">
-              <Link href={`/${post.slug}`}>
+              <Link href={`/post/${post.id}`}>
                 <h3 className="font-semibold line-clamp-2 hover:text-primary cursor-pointer mb-1">
                   {post.title}
                 </h3>
@@ -166,7 +166,7 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
                 {post.readingTime && (
                   <>
                     <span>•</span>
-                    <span>{post.readingTime} min</span>
+                    <span className="whitespace-nowrap">{post.readingTime}m</span>
                   </>
                 )}
               </div>
@@ -179,81 +179,57 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
 
   // Default variant
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      {/* Featured Image */}
-      {post.featuredImage && (
-        <div className="relative aspect-[16/9]">
-          <Image
-            src={post.featuredImage}
-            alt={post.title}
-            fill
-            className="object-cover"
-          />
-        </div>
-      )}
-      
-      <CardHeader className="pb-3">
-        {/* Categories */}
-        {post.categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {post.categories.slice(0, 2).map(({ category }) => (
-              <Badge
-                key={category.id}
-                variant="secondary"
-                style={{ backgroundColor: category.color || undefined }}
-                className="text-xs"
-              >
-                {category.name}
-              </Badge>
-            ))}
+    <Link href={`/post/${post.id}`} className="block">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
+        {/* Featured Image */}
+        {post.featuredImage && (
+          <div className="relative aspect-[16/10]">
+            <Image
+              src={post.featuredImage}
+              alt={post.title}
+              fill
+              className="object-cover"
+            />
           </div>
         )}
-
-        {/* Title */}
-        <Link href={`/${post.slug}`}>
-          <h3 className="text-xl font-bold line-clamp-2 hover:text-primary cursor-pointer">
+        
+        <div className="p-3">
+          {/* Title */}
+          <h3 className="text-base font-semibold line-clamp-2 hover:text-primary mb-2">
             {post.title}
           </h3>
-        </Link>
-      </CardHeader>
 
-      <CardContent className="pt-0">
-        {/* Excerpt */}
-        {post.excerpt && (
-          <p className="text-muted-foreground mb-4 line-clamp-3">
-            {post.excerpt}
-          </p>
-        )}
-
-        {/* Author and Meta */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Avatar className="h-6 w-6">
+          {/* Author */}
+          <div className="flex items-center space-x-2 mb-2">
+            <Avatar className="h-4 w-4">
               <AvatarImage src={post.author.image || ''} alt={post.author.name || ''} />
               <AvatarFallback className="text-xs">
                 {post.author.name?.charAt(0)?.toUpperCase() || 'A'}
               </AvatarFallback>
             </Avatar>
-            <div className="text-sm">
-              <span className="font-medium">{post.author.name}</span>
-              <span className="text-muted-foreground ml-2">{timeAgo}</span>
-            </div>
+            <span className="text-xs font-medium">{post.author.name}</span>
           </div>
 
-          <div className="flex items-center space-x-3 text-sm text-muted-foreground">
+          {/* Meta Info */}
+          <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+            <span>{timeAgo}</span>
             {post.readingTime && (
-              <div className="flex items-center space-x-1">
-                <Clock className="h-3 w-3" />
-                <span>{post.readingTime}m</span>
-              </div>
+              <>
+                <span>•</span>
+                <span className="whitespace-nowrap">{post.readingTime}m</span>
+              </>
             )}
-            <div className="flex items-center space-x-1">
-              <Heart className="h-3 w-3" />
-              <span>{post._count.likes}</span>
-            </div>
+            <span>•</span>
+            <span>{post._count.likes} ♡</span>
+            {post.categories.length > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-xs">{post.categories[0].category.name}</span>
+              </>
+            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </Card>
+    </Link>
   )
 }

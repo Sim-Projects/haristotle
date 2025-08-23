@@ -69,7 +69,6 @@ export default function HomePage() {
     }
   }
 
-  const [mainFeatured, ...otherFeatured] = featuredPosts
 
   if (loading) {
     return (
@@ -91,52 +90,46 @@ export default function HomePage() {
       
       <main>
         {/* Hero Section */}
-        <section className="bg-white border-b">
-          <div className="container mx-auto px-4 py-12 max-w-screen-2xl">
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">
+        <section className="bg-gradient-to-b from-white to-gray-50 border-b">
+          <div className="container mx-auto px-4 py-16 max-w-screen-2xl">
+            <div className="text-center mb-16">
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-gray-800 to-primary bg-clip-text text-transparent">
                 Write, Publish, <span className="text-primary">Share</span>
               </h1>
-              <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed">
                 A modern blog platform with a Notion-like editor. Share your thoughts and stories with the world.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" onClick={handleStartWriting}>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+                <Button size="lg" onClick={handleStartWriting} className="text-lg px-8 py-3 cursor-pointer">
                   Start Writing
                 </Button>
-                <Button asChild variant="outline" size="lg">
+                <Button asChild variant="outline" size="lg" className="text-lg px-8 py-3 cursor-pointer">
                   <Link href="/explore">Explore Articles</Link>
                 </Button>
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-              <Card>
-                <CardContent className="flex items-center p-6">
-                  <BookOpen className="h-8 w-8 text-primary mr-4" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.posts}</p>
-                    <p className="text-sm text-muted-foreground">Articles Published</p>
-                  </div>
+            {/* Stats - Ultra Compact Design */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-xs sm:max-w-md mx-auto">
+              <Card className="hover:shadow-md transition-all hover:scale-105 border-0 shadow-sm">
+                <CardContent className="flex flex-col items-center text-center p-2 sm:p-3">
+                  <BookOpen className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
+                  <p className="text-sm sm:text-base font-bold">{stats.posts}</p>
+                  <p className="text-xs text-muted-foreground">Articles</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="flex items-center p-6">
-                  <Users className="h-8 w-8 text-primary mr-4" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.authors}</p>
-                    <p className="text-sm text-muted-foreground">Active Writers</p>
-                  </div>
+              <Card className="hover:shadow-md transition-all hover:scale-105 border-0 shadow-sm">
+                <CardContent className="flex flex-col items-center text-center p-2 sm:p-3">
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
+                  <p className="text-sm sm:text-base font-bold">{stats.authors}</p>
+                  <p className="text-xs text-muted-foreground">Writers</p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="flex items-center p-6">
-                  <TrendingUp className="h-8 w-8 text-primary mr-4" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.categories}</p>
-                    <p className="text-sm text-muted-foreground">Categories</p>
-                  </div>
+              <Card className="hover:shadow-md transition-all hover:scale-105 border-0 shadow-sm">
+                <CardContent className="flex flex-col items-center text-center p-2 sm:p-3">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mb-1" />
+                  <p className="text-sm sm:text-base font-bold">{stats.categories}</p>
+                  <p className="text-xs text-muted-foreground">Categories</p>
                 </CardContent>
               </Card>
             </div>
@@ -146,23 +139,13 @@ export default function HomePage() {
         {/* Featured Posts */}
         {featuredPosts.length > 0 && (
           <section className="py-12">
-            <div className="container mx-auto px-4 max-w-screen-2xl">
+            <div className="container mx-auto px-4 max-w-6xl">
               <h2 className="text-3xl font-bold mb-8">Featured Articles</h2>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                {/* Main Featured */}
-                {mainFeatured && (
-                  <div className="lg:row-span-2">
-                    <ArticleCard post={mainFeatured} variant="featured" />
-                  </div>
-                )}
-                
-                {/* Other Featured */}
-                <div className="space-y-6">
-                  {otherFeatured.slice(0, 3).map((post) => (
-                    <ArticleCard key={post.id} post={post} variant="compact" />
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {featuredPosts.slice(0, 4).map((post) => (
+                  <ArticleCard key={post.id} post={post} />
+                ))}
               </div>
             </div>
           </section>
@@ -170,15 +153,15 @@ export default function HomePage() {
 
         {/* Recent Posts */}
         <section className="py-12 bg-white">
-          <div className="container mx-auto px-4 max-w-screen-2xl">
+          <div className="container mx-auto px-4 max-w-6xl">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-3xl font-bold">Latest Articles</h2>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="cursor-pointer">
                 <Link href="/explore">View All</Link>
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {recentPosts.map((post) => (
                 <ArticleCard key={post.id} post={post} />
               ))}
@@ -186,34 +169,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Categories */}
-        {categories.length > 0 && (
-          <section className="py-12">
-            <div className="container mx-auto px-4 max-w-screen-2xl">
-              <h2 className="text-3xl font-bold mb-8">Popular Categories</h2>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {categories.map((category) => (
-                  <Link key={category.id} href={`/category/${category.slug}`}>
-                    <Badge
-                      variant="secondary"
-                      className="w-full justify-center py-2 hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
-                      style={{ backgroundColor: category.color || undefined }}
-                    >
-                      <span className="text-center">
-                        {category.name}
-                        <br />
-                        <span className="text-xs opacity-70">
-                          {category._count.posts} posts
-                        </span>
-                      </span>
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
       </main>
     </div>
   )

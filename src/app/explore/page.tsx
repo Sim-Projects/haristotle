@@ -84,7 +84,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '')
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'recent')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
@@ -95,7 +95,7 @@ export default function ExplorePage() {
         const params = new URLSearchParams()
         if (searchTerm) params.append('q', searchTerm)
         if (sortBy !== 'recent') params.append('sort', sortBy)
-        if (selectedCategory) params.append('category', selectedCategory)
+        if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory)
         params.append('page', currentPage.toString())
         params.append('limit', '12')
 
@@ -132,7 +132,7 @@ export default function ExplorePage() {
   const handleClearFilters = () => {
     setSearchTerm('')
     setSortBy('recent')
-    setSelectedCategory('')
+    setSelectedCategory('all')
     setCurrentPage(1)
   }
 
@@ -218,7 +218,7 @@ export default function ExplorePage() {
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All categories</SelectItem>
+                    <SelectItem value="all">All categories</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.slug}>
                         {category.name} ({category._count.posts})
@@ -228,7 +228,7 @@ export default function ExplorePage() {
                 </Select>
 
                 {/* Clear Filters */}
-                {(searchTerm || sortBy !== 'recent' || selectedCategory) && (
+                {(searchTerm || sortBy !== 'recent' || selectedCategory !== 'all') && (
                   <Button variant="outline" onClick={handleClearFilters}>
                     <Filter className="h-4 w-4 mr-2" />
                     Clear
@@ -239,7 +239,7 @@ export default function ExplorePage() {
           </Card>
 
           {/* Popular Categories */}
-          {!searchTerm && !selectedCategory && categories.length > 0 && (
+          {!searchTerm && selectedCategory === 'all' && categories.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold mb-4">Popular Categories</h2>
               <div className="flex flex-wrap gap-2">
@@ -266,8 +266,8 @@ export default function ExplorePage() {
             <div className="flex items-center justify-between mb-6">
               <div className="text-muted-foreground">
                 {searchTerm && `Search results for "${searchTerm}"`}
-                {selectedCategory && !searchTerm && `Posts in ${categories.find(c => c.slug === selectedCategory)?.name}`}
-                {!searchTerm && !selectedCategory && 'All posts'}
+                {selectedCategory !== 'all' && !searchTerm && `Posts in ${categories.find(c => c.slug === selectedCategory)?.name}`}
+                {!searchTerm && selectedCategory === 'all' && 'All posts'}
               </div>
               <div className="text-sm text-muted-foreground">
                 Page {currentPage} of {totalPages}
@@ -336,11 +336,11 @@ export default function ExplorePage() {
                     <p className="text-muted-foreground mb-4">
                       {searchTerm
                         ? `No posts match "${searchTerm}"`
-                        : selectedCategory
+                        : selectedCategory !== 'all'
                         ? `No posts in this category`
                         : 'No posts available'}
                     </p>
-                    {(searchTerm || selectedCategory) && (
+                    {(searchTerm || selectedCategory !== 'all') && (
                       <Button variant="outline" onClick={handleClearFilters}>
                         Clear filters
                       </Button>

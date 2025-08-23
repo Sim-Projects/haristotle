@@ -172,7 +172,7 @@ export function PostsTable({ posts, onUpdate }: PostsTableProps) {
                     </Link>
                     {post.status === 'PUBLISHED' && (
                       <div className="text-xs text-muted-foreground mt-1">
-                        <Link href={`/${post.slug}`} className="hover:underline">
+                        <Link href={`/post/${post.id}`} className="hover:underline">
                           View published
                         </Link>
                       </div>
@@ -208,7 +208,7 @@ export function PostsTable({ posts, onUpdate }: PostsTableProps) {
                       </DropdownMenuItem>
                       {post.status === 'PUBLISHED' && (
                         <DropdownMenuItem asChild>
-                          <Link href={`/${post.slug}`}>
+                          <Link href={`/post/${post.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </Link>
