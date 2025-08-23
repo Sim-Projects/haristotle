@@ -76,7 +76,8 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       }
 
       setLastSaved(new Date())
-      toast.success('Draft saved automatically')
+      // toast.success('Draft saved automatically')
+      toast.success('Draft saved')
     } catch (error) {
       console.error('Auto-save error:', error)
       toast.error('Failed to auto-save draft')
@@ -222,11 +223,12 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
               <Button
                 onClick={handlePublish}
-                disabled={isSaving || status === 'PUBLISHED'}
+                disabled={isSaving || status === 'PUBLISHED' || !post?.id}
                 size="sm"
+                title={!post?.id ? "Save as draft first before publishing" : ""}
               >
                 <Globe className="h-4 w-4 mr-2" />
-                {status === 'PUBLISHED' ? 'Published' : 'Publish'}
+                {!post?.id ? 'Publish (save first)' : status === 'PUBLISHED' ? 'Published' : 'Publish'}
               </Button>
             </div>
           </div>
