@@ -207,7 +207,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
                 disabled={!post?.id}
               >
                 <Eye className="h-4 w-4 mr-2" />
-                Preview
+                Preview Draft
               </Button>
 
               <Button
@@ -217,7 +217,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
                 disabled={isSaving}
               >
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Saving...' : 'Save Draft'}
               </Button>
 
               <Button

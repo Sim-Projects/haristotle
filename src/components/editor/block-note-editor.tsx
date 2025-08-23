@@ -57,16 +57,16 @@ export function BlockNoteEditor({
     }
   }, [editor, onChange])
 
-  // Auto-save functionality
-  useEffect(() => {
-    if (!onSave || !content) return
+  // // Auto-save functionality
+  // useEffect(() => {
+  //   if (!onSave || !content) return
 
-    const saveTimeout = setTimeout(() => {
-      onSave(content)
-    }, 2000) // Auto-save after 2 seconds of inactivity
+  //   const saveTimeout = setTimeout(() => {
+  //     onSave(content)
+  //   }, 2000) // Auto-save after 2 seconds of inactivity
 
-    return () => clearTimeout(saveTimeout)
-  }, [content, onSave])
+  //   return () => clearTimeout(saveTimeout)
+  // }, [content, onSave])
 
   // Keyboard shortcuts
   useEffect(() => {
