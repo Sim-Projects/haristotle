@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { ArticleCard } from '@/components/blog/article-card'
@@ -77,7 +77,7 @@ interface Category {
   }
 }
 
-export default function ExplorePage() {
+function ExplorePageContent() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -353,5 +353,13 @@ export default function ExplorePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50"><div className="container mx-auto px-4 py-8 max-w-screen-2xl"><div className="text-center"><h1 className="text-4xl font-bold mb-4">Explore Articles</h1><p className="text-muted-foreground mb-8">Loading...</p></div></div></div>}>
+      <ExplorePageContent />
+    </Suspense>
   )
 }
