@@ -1,0 +1,214 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { createPostSchema } from '@/lib/validations/post'
+import { generateUniqueSlug, calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const status = searchParams.get('status')
+    const authorId = searchParams.get('authorId')
+    const category = searchParams.get('category')
+    const tag = searchParams.get('tag')
+    const search = searchParams.get('search')
+
+    const skip = (page - 1) * limit
+
+    // Build where clause
+    const where: any = {}
+    
+    if (status) where.status = status
+    if (authorId) where.authorId = authorId
+    if (category) {
+      where.categories = {
+        some: {
+          category: {
+            slug: category
+          }
+        }
+      }
+    }
+    if (tag) {
+      where.tags = {
+        some: {
+          tag: {
+            slug: tag
+          }
+        }
+      }
+    }
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { excerpt: { contains: search, mode: 'insensitive' } }
+      ]
+    }
+
+    const [posts, totalCount] = await Promise.all([
+      prisma.post.findMany({
+        where,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              username: true,
+              image: true,
+              bio: true,
+            },
+          },
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+              bookmarks: true,
+            },
+          },
+        },
+        orderBy: [
+          { status: 'desc' }, // Published first
+          { createdAt: 'desc' },
+        ],
+        skip,
+        take: limit,
+      }),
+      prisma.post.count({ where })
+    ])
+
+    return NextResponse.json({
+      posts,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages: Math.ceil(totalCount / limit),
+        hasNextPage: skip + limit < totalCount,
+        hasPrevPage: page > 1,
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching posts:', error)
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const validatedData = createPostSchema.parse(body)
+
+    // Generate unique slug from title
+    const baseSlug = validatedData.title || 'untitled'
+    const slug = await generateUniqueSlug(
+      baseSlug,
+      async (slug: string) => {
+        const existing = await prisma.post.findUnique({
+          where: { slug },
+        })
+        return !!existing
+      }
+    )
+
+    // Calculate reading time and extract excerpt
+    const readingTime = calculateReadingTime(validatedData.content)
+    const excerpt = validatedData.excerpt || extractExcerpt(validatedData.content)
+
+    // Ensure user exists in database
+    const author = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    })
+
+    if (!author) {
+      console.error('User not found in database:', session.user.id)
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    // Create the post
+    const post = await prisma.post.create({
+      data: {
+        title: validatedData.title,
+        slug,
+        content: validatedData.content,
+        excerpt,
+        featuredImage: validatedData.featuredImage,
+        status: validatedData.status,
+        readingTime,
+        authorId: session.user.id,
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+        },
+      },
+    })
+
+    // Handle categories and tags if provided
+    if (validatedData.categoryIds.length > 0) {
+      await prisma.categoryOnPost.createMany({
+        data: validatedData.categoryIds.map((categoryId) => ({
+          postId: post.id,
+          categoryId,
+        })),
+      })
+    }
+
+    if (validatedData.tagIds.length > 0) {
+      await prisma.tagOnPost.createMany({
+        data: validatedData.tagIds.map((tagId) => ({
+          postId: post.id,
+          tagId,
+        })),
+      })
+    }
+
+    return NextResponse.json(post, { status: 201 })
+  } catch (error) {
+    console.error('Error creating post:', error)
+    
+    if (error instanceof Error && error.name === 'ZodError') {
+      return NextResponse.json(
+        { error: 'Invalid data', details: error },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    )
+  }
+}
