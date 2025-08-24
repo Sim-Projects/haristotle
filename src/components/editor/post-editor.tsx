@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { DynamicBlockNoteEditor as BlockNoteEditor } from './dynamic-block-note-editor'
+import { AIComponentSidebar } from './ai-component-sidebar'
+import { AISandboxHelp } from './ai-sandbox-help'
+import { useNavigationProtection, useAISidebar } from '@/hooks/use-ai-sidebar'
 import { Save, Eye, Globe, Lock, Clock, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -32,7 +35,14 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
   const [status, setStatus] = useState(post?.status || 'DRAFT')
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  
+  // Add navigation protection for AI sidebar
+  useNavigationProtection()
+  
+  // Get AI sidebar state
+  const { isOpen: isAISidebarOpen, hasUnsavedChanges: hasAIUnsavedChanges } = useAISidebar()
 
   // Auto-focus title for new posts
   useEffect(() => {
@@ -40,6 +50,28 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       titleRef.current.focus()
     }
   }, [isNew])
+
+  // Track unsaved changes
+  useEffect(() => {
+    const initialTitle = post?.title || ''
+    const initialContent = post?.content || ''
+    const hasChanges = title !== initialTitle || content !== initialContent
+    setHasUnsavedChanges(hasChanges)
+  }, [title, content, post?.title, post?.content])
+
+  // Add beforeunload protection for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   // Auto-save function
   const autoSave = useCallback(async (contentToSave: string) => {
@@ -76,6 +108,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       }
 
       setLastSaved(new Date())
+      setHasUnsavedChanges(false)
       // toast.success('Draft saved automatically')
       toast.success('Draft saved')
     } catch (error) {
@@ -166,6 +199,28 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b">
+        {/* Unsaved changes indicator */}
+        {(hasUnsavedChanges || hasAIUnsavedChanges) && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-amber-800">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-medium">
+                  You have unsaved changes
+                  {hasUnsavedChanges && hasAIUnsavedChanges 
+                    ? ' in your post and the AI component generator'
+                    : hasUnsavedChanges 
+                    ? ' in your post' 
+                    : ' in the AI component generator'
+                  }
+                </span>
+              </div>
+              <div className="text-xs text-amber-700">
+                Changes will be lost if you leave without saving
+              </div>
+            </div>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -236,8 +291,11 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       </div>
 
       {/* Editor Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <Card className="p-8">
+      <div className="transition-all duration-300 ease-in-out">
+        <div className={`max-w-4xl mx-auto px-4 py-8 transition-all duration-300 ease-in-out ${
+          isAISidebarOpen ? 'mr-[50%]' : ''
+        }`}>
+          <Card className="p-8">
           {/* Title Input */}
           <div className="mb-8">
             <Input
@@ -252,6 +310,9 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
           <Separator className="mb-8" />
 
+          {/* AI Sandbox Help */}
+          <AISandboxHelp />
+
           {/* BlockNote Editor */}
           <div className="min-h-[600px]">
             <BlockNoteEditor
@@ -259,9 +320,18 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
               onChange={setContent}
               onSave={autoSave}
               editable={true}
+              postId={post?.id}
             />
           </div>
-        </Card>
+          </Card>
+        </div>
+        
+        {/* AI Component Sidebar */}
+        {post?.id && (
+          <div className="w-1/2">
+            <AIComponentSidebar postId={post.id} />
+          </div>
+        )}
       </div>
 
       {/* Footer */}
