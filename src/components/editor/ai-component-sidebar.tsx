@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -251,14 +252,32 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                 </Label>
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
                   <SelectTrigger id="model-select">
-                    <SelectValue placeholder="Select AI model" />
+                    <div className="flex items-center gap-2">
+                      <Image 
+                        src="/openai-icon.svg" 
+                        alt="OpenAI" 
+                        width={16} 
+                        height={16} 
+                        className="flex-shrink-0"
+                      />
+                      <SelectValue placeholder="Select AI model" />
+                    </div>
                   </SelectTrigger>
                   <SelectContent>
                     {availableModels.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{model.label}</span>
-                          <span className="text-xs text-gray-500">{model.description}</span>
+                        <div className="flex items-center gap-2">
+                          <Image 
+                            src="/openai-icon.svg" 
+                            alt="OpenAI" 
+                            width={14} 
+                            height={14} 
+                            className="flex-shrink-0"
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{model.label}</span>
+                            <span className="text-xs text-gray-500">{model.description}</span>
+                          </div>
                         </div>
                       </SelectItem>
                     ))}
