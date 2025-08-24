@@ -303,7 +303,7 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    <span className="animate-pulse text-blue-300 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-300">
+                    <span className="animate-pulse text-white font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-[0_0_20px_rgba(59,130,246,0.8)] border border-blue-300 transition-all duration-300">
                       {currentGeneratingWord}...
                     </span>
                   </>
@@ -385,8 +385,8 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                     <div className="flex-1 flex items-center justify-center border rounded-lg bg-gray-50">
                       <div className="text-center">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-500">
-                          <span className="animate-pulse text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.6)] transition-all duration-300 font-medium">
+                        <p className="text-sm">
+                          <span className="animate-pulse text-white font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-[0_0_20px_rgba(59,130,246,0.8)] border border-blue-300 transition-all duration-300">
                             {currentGeneratingWord}...
                           </span>
                         </p>
