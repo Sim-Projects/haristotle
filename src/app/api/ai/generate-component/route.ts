@@ -10,7 +10,8 @@ const generateComponentSchema = z.object({
   prompt: z.string().min(1, 'Prompt is required'),
   blockId: z.string().min(1, 'Block ID is required'),
   postId: z.string().cuid('Invalid post ID'),
-  componentId: z.string().optional()
+  componentId: z.string().optional(),
+  model: z.string().optional().default('gpt-4.1-mini')
 })
 
 type GenerateComponentInput = z.infer<typeof generateComponentSchema>
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = generateComponentSchema.parse(body)
     
-    const { prompt, blockId, postId, componentId } = validatedData
+    const { prompt, blockId, postId, componentId, model } = validatedData
     
     // Verify the user owns the post
     const post = await prisma.post.findFirst({
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     
     try {
       // Generate the component using AI
-      const generatedCode = await generateReactComponent(prompt, aiComponent.versions)
+      const generatedCode = await generateReactComponent(prompt, aiComponent.versions, model)
       
       // Update the version with the generated code
       const updatedVersion = await prisma.aIComponentVersion.update({
@@ -148,9 +149,21 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Map user-friendly model names to OpenAI model identifiers
+function getOpenAIModel(modelName: string): string {
+  const modelMap: { [key: string]: string } = {
+    'gpt-4.1-mini': 'gpt-4o-mini', // Use available model as fallback
+    'gpt-4.1': 'gpt-4o',
+    'gpt-5-mini': 'gpt-4o-mini' // Use available model as fallback
+  }
+  
+  return modelMap[modelName] || 'gpt-4o-mini'
+}
+
 async function generateReactComponent(
   prompt: string, 
-  previousVersions: any[] = []
+  previousVersions: any[] = [],
+  modelName: string = 'gpt-4.1-mini'
 ): Promise<string> {
   // Build context from previous versions
   let context = ''
@@ -213,7 +226,7 @@ function MyComponent() {
 \`\`\`${context}`
   
   const { text } = await generateText({
-    model: openai('gpt-4o-mini'),
+    model: openai(getOpenAIModel(modelName)),
     system: systemPrompt,
     prompt: `Create a React component: ${prompt}`,
     temperature: 0.7

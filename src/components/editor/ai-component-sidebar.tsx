@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { useAISidebar } from '@/hooks/use-ai-sidebar'
 import { SafeReactComponentRuntime } from './react-component-runtime'
 import { 
@@ -44,6 +46,45 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
   
   const [activeTab, setActiveTab] = useState<'prompt' | 'preview' | 'history'>('prompt')
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState<string>('gpt-4.1-mini')
+  const [currentGeneratingWord, setCurrentGeneratingWord] = useState<string>('cooking')
+
+  const availableModels = [
+    { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'Fast and efficient' },
+    { value: 'gpt-4.1', label: 'GPT-4.1', description: 'Balanced performance' },
+    { value: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Latest mini model' }
+  ]
+
+  const generatingWords = [
+  'cooking', 'storyboarding', 'diving', 'crafting', 'brewing', 'sculpting',
+  'weaving', 'painting', 'composing', 'designing', 'building', 'creating',
+  'forging', 'molding', 'dreaming', 'imagining', 'conjuring', 'spinning',
+  'orchestrating', 'architecting', 'inventing', 'sketching', 'mapping', 'drafting',
+  'plotting', 'animating', 'envisioning', 'modeling', 'rendering', 'simulating',
+  'refining', 'exploring', 'generating', 'synthesizing', 'curating', 'editing',
+  'shaping', 'assembling', 'programming', 'coding', 'prototyping', 'testing',
+  'debugging', 'optimizing', 'refactoring', 'enriching', 'expanding',
+  'reimagining', 'revising', 'reworking', 'rebuilding', 'reconstructing',
+  'gigglecoding', 'snackifying', 'quackitecting', 'bananifying', 'jellyfying',
+  'wobblifying', 'doodling', 'snoozling', 'bamboozling', 'whimsifying', 'fluffing',
+  'zombifying', 'splatting', 'blorpifying', 'squigglizing', 'memeifying', 'derping',
+  'honkifying', 'booping', 'glitching', 'froggling', 'sporking', 'noodling'
+  ]
+
+  // Cycle through generating words when isGenerating is true
+  useEffect(() => {
+    if (!isGenerating) return
+
+    const interval = setInterval(() => {
+      setCurrentGeneratingWord(prev => {
+        const currentIndex = generatingWords.indexOf(prev)
+        const nextIndex = (currentIndex + 1) % generatingWords.length
+        return generatingWords[nextIndex]
+      })
+    }, 800) // Change word every 800ms
+
+    return () => clearInterval(interval)
+  }, [isGenerating, generatingWords])
   
   // Get the currently selected version for preview
   const selectedVersion = React.useMemo(() => {
@@ -81,7 +122,8 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
           prompt: currentPrompt,
           blockId: currentBlockId,
           postId: postId,
-          componentId: componentData?.id
+          componentId: componentData?.id,
+          model: selectedModel
         }),
       })
       
@@ -204,6 +246,27 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
             <div className="p-4 h-full flex flex-col">
               <div className="space-y-4 flex-1">
               <div>
+                <Label htmlFor="model-select" className="block text-sm font-medium text-gray-700 mb-2">
+                  AI Model
+                </Label>
+                <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
+                  <SelectTrigger id="model-select">
+                    <SelectValue placeholder="Select AI model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map((model) => (
+                      <SelectItem key={model.value} value={model.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{model.label}</span>
+                          <span className="text-xs text-gray-500">{model.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
                 <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
                   Describe the component you want to create
                 </label>
@@ -240,7 +303,9 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
+                    <span className="animate-pulse text-blue-300 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all duration-300">
+                      {currentGeneratingWord}...
+                    </span>
                   </>
                 ) : (
                   <>
@@ -320,7 +385,11 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                     <div className="flex-1 flex items-center justify-center border rounded-lg bg-gray-50">
                       <div className="text-center">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-500">Generating component...</p>
+                        <p className="text-sm text-gray-500">
+                          <span className="animate-pulse text-blue-400 drop-shadow-[0_0_6px_rgba(59,130,246,0.6)] transition-all duration-300 font-medium">
+                            {currentGeneratingWord}...
+                          </span>
+                        </p>
                       </div>
                     </div>
                   ) : (
