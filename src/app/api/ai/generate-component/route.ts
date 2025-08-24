@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         where: { id: aiComponent.id },
         include: {
           versions: {
-            orderBy: { versionNumber: 'desc' }
+            orderBy: { versionNumber: 'asc' }  // Order by ascending so latest is at the end
           }
         }
       })
@@ -182,13 +182,14 @@ async function generateReactComponent(
   const systemPrompt = `You are an expert React developer. Generate a React functional component based on the user's prompt.
 
 IMPORTANT RULES:
-1. Return ONLY the React component code, no explanations
+1. Return ONLY the React component code
 2. Use only these allowed imports/components:
    - React hooks: useState, useEffect, useCallback, useMemo
    - UI Components: Button, Card, CardContent, CardHeader, CardTitle, Badge, Input, Textarea, Alert, AlertDescription, Separator, Switch, Label
    - Icons: AlertCircle, CheckCircle, Clock, Heart, Star, Plus, Minus, Eye, EyeOff, Download, Upload, Search, Filter, Settings, User, Mail, Phone, Calendar, MapPin, Globe, Hash, DollarSign
    - All components are already imported in the scope
-   - Make sure the components don't overflow horizontally and wraps to the next line if needed and add some margin/padding for better spacing
+   - Make sure the components don't overflow horizontally and wraps to the next line if needed
+   - add some margin to each component like button, input, label, etc for better spacing
 
 3. The component should be a default function or named function
 4. Use TypeScript with proper types
@@ -198,6 +199,7 @@ IMPORTANT RULES:
 8. Do NOT include any imports - they are already available
 9. Do NOT use any external libraries not listed above
 10. Keep components self-contained and functional
+11. Important: Do not mention the language or framework in the code
 
 Example format:
 \`\`\`

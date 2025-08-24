@@ -82,22 +82,22 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
         const nextIndex = (currentIndex + 1) % generatingWords.length
         return generatingWords[nextIndex]
       })
-    }, 800) // Change word every 800ms
+    }, 1500) // Change word every 800ms
 
     return () => clearInterval(interval)
   }, [isGenerating, generatingWords])
   
   // Get the currently selected version for preview
   const selectedVersion = React.useMemo(() => {
-    if (!componentData?.versions) return null
+    if (!componentData?.versions?.length) return null
     
+    // If we have a selected version ID, use that
     if (selectedVersionId) {
       return componentData.versions.find(v => v.id === selectedVersionId) || null
     }
     
-    // Default to current version or latest
-    const currentVersion = componentData.versions.find(v => v.id === componentData.currentVersionId)
-    return currentVersion || componentData.versions[componentData.versions.length - 1] || null
+    // Otherwise, use the latest version
+    return componentData.versions[componentData.versions.length - 1] || null
   }, [componentData, selectedVersionId])
   
   const handleGenerateComponent = useCallback(async () => {
@@ -310,12 +310,30 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
               <Button
                 onClick={handleGenerateComponent}
                 disabled={isGenerating || !currentPrompt.trim()}
-                className="w-full"
+                className={`w-full relative transition-all duration-300 ${
+                  isGenerating 
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700' 
+                    : 'bg-black hover:bg-gradient-to-r hover:from-blue-500 hover:to-purple-600'
+                } ${
+                  !isGenerating && !currentPrompt.trim() ? 'opacity-50' : ''
+                }`}
+                style={{
+                  boxShadow: isGenerating ? '0 0 20px rgba(59,130,246,0.8)' : '',
+                }}
               >
+                <div className={`absolute inset-0 rounded-md ${!isGenerating ? 'animate-border-glow' : ''}`} 
+                     style={{
+                       background: !isGenerating ? 'linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ff0000)' : 'none',
+                       backgroundSize: '400% 400%',
+                       zIndex: -1,
+                       margin: '-2px',
+                       opacity: !isGenerating && currentPrompt.trim() ? 1 : 0,
+                     }}
+                />
                 {isGenerating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    <span className="animate-pulse text-white font-semibold px-3 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-[0_0_20px_rgba(59,130,246,0.8)] border border-blue-300 transition-all duration-300">
+                    <span className="font-semibold">
                       {currentGeneratingWord}...
                     </span>
                   </>
