@@ -57,19 +57,19 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
   ]
 
   const generatingWords = [
-  'cooking', 'storyboarding', 'diving', 'crafting', 'brewing', 'sculpting',
-  'weaving', 'painting', 'composing', 'designing', 'building', 'creating',
-  'forging', 'molding', 'dreaming', 'imagining', 'conjuring', 'spinning',
-  'orchestrating', 'architecting', 'inventing', 'sketching', 'mapping', 'drafting',
-  'plotting', 'animating', 'envisioning', 'modeling', 'rendering', 'simulating',
-  'refining', 'exploring', 'generating', 'synthesizing', 'curating', 'editing',
-  'shaping', 'assembling', 'programming', 'coding', 'prototyping', 'testing',
-  'debugging', 'optimizing', 'refactoring', 'enriching', 'expanding',
-  'reimagining', 'revising', 'reworking', 'rebuilding', 'reconstructing',
-  'gigglecoding', 'snackifying', 'quackitecting', 'bananifying', 'jellyfying',
-  'wobblifying', 'doodling', 'snoozling', 'bamboozling', 'whimsifying', 'fluffing',
-  'zombifying', 'splatting', 'blorpifying', 'squigglizing', 'memeifying', 'derping',
-  'honkifying', 'booping', 'glitching', 'froggling', 'sporking', 'noodling'
+    'cooking', 'storyboarding', 'diving', 'crafting', 'brewing', 'sculpting',
+    'weaving', 'painting', 'composing', 'designing', 'building', 'creating',
+    'forging', 'molding', 'dreaming', 'imagining', 'conjuring', 'spinning',
+    'orchestrating', 'architecting', 'inventing', 'sketching', 'mapping', 'drafting',
+    'plotting', 'animating', 'envisioning', 'modeling', 'rendering', 'simulating',
+    'refining', 'exploring', 'generating', 'synthesizing', 'curating', 'editing',
+    'shaping', 'assembling', 'programming', 'coding', 'prototyping', 'testing',
+    'debugging', 'optimizing', 'refactoring', 'enriching', 'expanding',
+    'reimagining', 'revising', 'reworking', 'rebuilding', 'reconstructing',
+    'gigglecoding', 'snackifying', 'quackitecting', 'bananifying', 'jellyfying',
+    'wobblifying', 'doodling', 'snoozling', 'bamboozling', 'whimsifying', 'fluffing',
+    'zombifying', 'splatting', 'blorpifying', 'squigglizing', 'memeifying', 'derping',
+    'honkifying', 'booping', 'glitching', 'froggling', 'sporking', 'noodling'
   ]
 
   // Cycle through generating words when isGenerating is true
@@ -253,13 +253,6 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                 <Select value={selectedModel} onValueChange={setSelectedModel} disabled={isGenerating}>
                   <SelectTrigger id="model-select">
                     <div className="flex items-center gap-2">
-                      <Image 
-                        src="/openai-icon.svg" 
-                        alt="OpenAI" 
-                        width={16} 
-                        height={16} 
-                        className="flex-shrink-0"
-                      />
                       <SelectValue placeholder="Select AI model" />
                     </div>
                   </SelectTrigger>
@@ -268,7 +261,7 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                       <SelectItem key={model.value} value={model.value}>
                         <div className="flex items-center gap-2">
                           <Image 
-                            src="/openai-icon.svg" 
+                            src="/static/images/openai-icon.svg"
                             alt="OpenAI" 
                             width={14} 
                             height={14} 
