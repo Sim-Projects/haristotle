@@ -120,6 +120,53 @@ export async function POST(
         })
       }
 
+      // Also publish all AI components in this post
+      const aiComponents = await tx.aIComponent.findMany({
+        where: { postId: params.id },
+        include: {
+          currentDraftVersion: true,
+          currentPublishedVersion: true
+        }
+      })
+
+      for (const aiComponent of aiComponents) {
+        if (aiComponent.currentDraftVersion) {
+          if (aiComponent.currentPublishedVersion) {
+            // Update existing published version with draft content
+            await tx.aIComponentVersion.update({
+              where: { id: aiComponent.currentPublishedVersion.id },
+              data: {
+                prompt: aiComponent.currentDraftVersion.prompt,
+                generatedCode: aiComponent.currentDraftVersion.generatedCode,
+                status: aiComponent.currentDraftVersion.status,
+                errorMessage: aiComponent.currentDraftVersion.errorMessage,
+              }
+            })
+          } else {
+            // Create new published version based on draft
+            const publishedVersion = await tx.aIComponentVersion.create({
+              data: {
+                componentId: aiComponent.id,
+                prompt: aiComponent.currentDraftVersion.prompt,
+                generatedCode: aiComponent.currentDraftVersion.generatedCode,
+                versionNumber: (await tx.aIComponentVersion.count({ 
+                  where: { componentId: aiComponent.id } 
+                })) + 1,
+                status: aiComponent.currentDraftVersion.status,
+                mode: 'PUBLISHED',
+                errorMessage: aiComponent.currentDraftVersion.errorMessage,
+              }
+            })
+            
+            // Update component to reference the published version
+            await tx.aIComponent.update({
+              where: { id: aiComponent.id },
+              data: { currentPublishedVersionId: publishedVersion.id }
+            })
+          }
+        }
+      }
+
       return post
     })
 

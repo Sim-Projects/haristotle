@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -59,6 +59,17 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
     setHasUnsavedChanges(hasChanges)
   }, [title, content, post?.title, post?.content])
 
+  // Debounced auto-save
+  useEffect(() => {
+    if (!hasUnsavedChanges || !post?.id) return
+
+    const timeoutId = setTimeout(() => {
+      autoSave(content, false)
+    }, 3000) // Auto-save after 3 seconds of inactivity
+
+    return () => clearTimeout(timeoutId)
+  }, [title, content, hasUnsavedChanges, post?.id, autoSave])
+
   // Add beforeunload protection for unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -74,15 +85,15 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
   }, [hasUnsavedChanges])
 
   // Auto-save function
-  const autoSave = useCallback(async (contentToSave: string) => {
+  const autoSave = useCallback(async (contentToSave: string, showToast: boolean = false) => {
     if (!session?.user?.id) return
     if (!title.trim() && !contentToSave.trim()) return
 
     setIsSaving(true)
 
     try {
-      const endpoint = isNew || !post?.id ? '/api/posts' : `/api/posts/${post.id}`
-      const method = isNew || !post?.id ? 'POST' : 'PUT'
+      const endpoint = `/api/posts/${post?.id}`
+      const method = 'PUT'
 
       const response = await fetch(endpoint, {
         method,
@@ -101,23 +112,21 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       }
 
       const savedPost = await response.json()
-      
-      // If this was a new post, update the URL
-      if (isNew && savedPost.id) {
-        router.replace(`/write/${savedPost.id}`, { scroll: false })
-      }
 
       setLastSaved(new Date())
       setHasUnsavedChanges(false)
-      // toast.success('Draft saved automatically')
-      toast.success('Draft saved')
+      if (showToast) {
+        toast.success('Draft saved')
+      }
     } catch (error) {
       console.error('Auto-save error:', error)
-      toast.error('Failed to auto-save draft')
+      if (showToast) {
+        toast.error('Failed to save draft')
+      }
     } finally {
       setIsSaving(false)
     }
-  }, [title, session, isNew, post?.id, router])
+  }, [title, session, post?.id])
 
   // Manual save function
   const handleSave = useCallback(async () => {
@@ -132,7 +141,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       return
     }
 
-    await autoSave(content)
+    await autoSave(content, true)
   }, [autoSave, content, title, session])
 
   // Publish function

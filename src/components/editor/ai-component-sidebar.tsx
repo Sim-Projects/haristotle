@@ -53,7 +53,9 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
   const availableModels = [
     { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', description: 'Fast and efficient' },
     { value: 'gpt-4.1', label: 'GPT-4.1', description: 'Balanced performance' },
-    { value: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Latest mini model' }
+    { value: 'gpt-5-mini', label: 'GPT-5 Mini', description: 'Latest mini model' },
+    { value: 'claude-sonnet-3.7', label: 'Claude Sonnet 3.7', description: 'Advanced reasoning' },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4', description: 'Latest Claude model' }
   ]
 
   const generatingWords = [
@@ -261,8 +263,8 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
                       <SelectItem key={model.value} value={model.value}>
                         <div className="flex items-center gap-2">
                           <Image 
-                            src="/static/images/openai-icon.svg"
-                            alt="OpenAI" 
+                            src={model.value.includes('claude') ? "/static/images/claude-ai-icon.svg" : "/static/images/openai-icon.svg"}
+                            alt={model.value.includes('claude') ? "Claude" : "OpenAI"} 
                             width={14} 
                             height={14} 
                             className="flex-shrink-0"

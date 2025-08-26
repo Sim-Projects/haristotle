@@ -8,14 +8,8 @@ export async function GET(
   context: { params: Promise<{ blockId: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+    const { searchParams } = new URL(request.url)
+    const mode = searchParams.get('mode') || 'DRAFT' // Default to DRAFT for editing
     
     const params = await context.params
     const { blockId } = params
@@ -23,15 +17,16 @@ export async function GET(
     // Find the AI component by block ID
     const aiComponent = await prisma.aIComponent.findFirst({
       where: {
-        blockId,
-        post: {
-          authorId: session.user.id
-        }
+        blockId
       },
       include: {
+        post: true,
         versions: {
+          where: mode === 'PUBLISHED' ? { mode: 'PUBLISHED' } : { mode: 'DRAFT' },
           orderBy: { versionNumber: 'desc' }
-        }
+        },
+        currentDraftVersion: mode === 'DRAFT',
+        currentPublishedVersion: mode === 'PUBLISHED'
       }
     })
     
@@ -39,6 +34,16 @@ export async function GET(
       return NextResponse.json(
         { error: 'Component not found' },
         { status: 404 }
+      )
+    }
+    
+    // For published mode, allow public access
+    // For draft mode, require ownership
+    const session = await getServerSession(authOptions)
+    if (mode === 'DRAFT' && (!session?.user?.id || aiComponent.post.authorId !== session.user.id)) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
     

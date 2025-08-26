@@ -302,17 +302,19 @@ enum NotificationType {
 
 // AI Component Generation System
 model AIComponent {
-  id               String   @id @default(cuid())
-  blockId          String   @unique @map("block_id") // Unique identifier for the block in BlockNote
-  postId           String   @map("post_id")
-  currentVersionId String?  @unique @map("current_version_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                      String   @id @default(cuid())
+  blockId                 String   @unique @map("block_id") // Unique identifier for the block in BlockNote
+  postId                  String   @map("post_id")
+  currentDraftVersionId   String?  @unique @map("current_draft_version_id")
+  currentPublishedVersionId String? @unique @map("current_published_version_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
 
   // Relations
-  post            Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  versions        AIComponentVersion[]
-  currentVersion  AIComponentVersion?   @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  post                    Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  versions                AIComponentVersion[]
+  currentDraftVersion     AIComponentVersion?   @relation("CurrentDraftVersion", fields: [currentDraftVersionId], references: [id])
+  currentPublishedVersion AIComponentVersion?   @relation("CurrentPublishedVersion", fields: [currentPublishedVersionId], references: [id])
 
   @@map("ai_components")
 }
@@ -324,12 +326,14 @@ model AIComponentVersion {
   generatedCode String   @map("generated_code") @db.Text
   versionNumber Int      @map("version_number")
   status        AIGenerationStatus @default(GENERATING)
+  mode          AIComponentMode @default(DRAFT) // Track draft vs published
   errorMessage  String?  @map("error_message") @db.Text
   createdAt     DateTime @default(now()) @map("created_at")
 
   // Relations
-  component         AIComponent   @relation(fields: [componentId], references: [id], onDelete: Cascade)
-  currentForComponent AIComponent? @relation("CurrentVersion")
+  component                    AIComponent   @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  currentDraftForComponent     AIComponent? @relation("CurrentDraftVersion")
+  currentPublishedForComponent AIComponent? @relation("CurrentPublishedVersion")
 
   @@unique([componentId, versionNumber])
   @@map("ai_component_versions")
@@ -339,4 +343,9 @@ enum AIGenerationStatus {
   GENERATING
   COMPLETED
   FAILED
+}
+
+enum AIComponentMode {
+  DRAFT
+  PUBLISHED
 }

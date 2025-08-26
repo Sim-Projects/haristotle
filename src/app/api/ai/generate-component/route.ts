@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { openai } from '@ai-sdk/openai'
+import { anthropic } from '@ai-sdk/anthropic'
 import { generateText } from 'ai'
 import { z } from 'zod'
 
@@ -71,14 +72,15 @@ export async function POST(request: NextRequest) {
     // Generate the next version number
     const nextVersionNumber = (aiComponent.versions.length || 0) + 1
     
-    // Create a new version in GENERATING state
+    // Create a new version in GENERATING state (always starts as DRAFT)
     const newVersion = await prisma.aIComponentVersion.create({
       data: {
         componentId: aiComponent.id,
         prompt,
         generatedCode: '', // Will be updated after generation
         versionNumber: nextVersionNumber,
-        status: 'GENERATING'
+        status: 'GENERATING',
+        mode: 'DRAFT'
       }
     })
     
@@ -95,10 +97,10 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      // Update the AI component's current version
+      // Update the AI component's current draft version
       await prisma.aIComponent.update({
         where: { id: aiComponent.id },
-        data: { currentVersionId: updatedVersion.id }
+        data: { currentDraftVersionId: updatedVersion.id }
       })
       
       // Fetch the complete component data with all versions
@@ -149,15 +151,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Map user-friendly model names to OpenAI model identifiers
-function getOpenAIModel(modelName: string): string {
-  const modelMap: { [key: string]: string } = {
-    'gpt-4.1-mini': 'gpt-4o-mini', // Use available model as fallback
-    'gpt-4.1': 'gpt-4o',
-    'gpt-5-mini': 'gpt-4o-mini' // Use available model as fallback
+// Map user-friendly model names to actual model identifiers
+function getModelProvider(modelName: string): { provider: 'openai' | 'anthropic', model: string } {
+  const modelMap: { [key: string]: { provider: 'openai' | 'anthropic', model: string } } = {
+    'gpt-4.1-mini': { provider: 'openai', model: 'gpt-4o-mini' },
+    'gpt-4.1': { provider: 'openai', model: 'gpt-4o' },
+    'gpt-5-mini': { provider: 'openai', model: 'gpt-4o-mini' },
+    'claude-sonnet-3.7': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+    'claude-sonnet-4': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' }
   }
   
-  return modelMap[modelName] || 'gpt-4o-mini'
+  return modelMap[modelName] || { provider: 'openai', model: 'gpt-4o-mini' }
 }
 
 async function generateReactComponent(
@@ -227,8 +231,13 @@ function MyComponent() {
 }
 \`\`\`${context}`
   
+  const modelConfig = getModelProvider(modelName)
+  const model = modelConfig.provider === 'openai' 
+    ? openai(modelConfig.model)
+    : anthropic(modelConfig.model)
+  
   const { text } = await generateText({
-    model: openai(getOpenAIModel(modelName)),
+    model,
     system: systemPrompt,
     prompt: `Create a React component: ${prompt}`,
     temperature: 0.7

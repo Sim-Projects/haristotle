@@ -25,6 +25,13 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
   // Check if editor is editable
   const isEditable = editor.isEditable
   
+  // Determine mode based on editor context
+  const mode = useMemo(() => {
+    if (isEditable) return 'DRAFT'
+    // Check if we're in a published context (like viewing a published post)
+    return (editor as any)?.viewMode === 'published' ? 'PUBLISHED' : 'DRAFT'
+  }, [isEditable, editor])
+  
   // Use the blockId from props or generate one
   const blockId = block.props?.blockId || block.id
   const postId = useMemo(() => {
@@ -39,7 +46,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     const fetchComponentData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/ai/components/by-block/${blockId}`)
+        const response = await fetch(`/api/ai/components/by-block/${blockId}?mode=${mode}`)
         if (response.ok) {
           const data = await response.json()
           setComponentData(data)
@@ -54,7 +61,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     }
     
     fetchComponentData()
-  }, [blockId])
+  }, [blockId, mode])
   
   // Listen for component updates
   useEffect(() => {
@@ -88,19 +95,32 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     }
   }, [block, editor])
   
-  // Get current version for rendering
+  // Get current version for rendering based on mode
   const currentVersion = useMemo(() => {
-    if (!componentData?.versions || componentData.versions.length === 0) return null
+    if (!componentData) return null
     
-    if (componentData.currentVersionId) {
-      return componentData.versions.find((v: any) => v.id === componentData.currentVersionId)
+    if (mode === 'DRAFT') {
+      // In draft mode, use currentDraftVersion or fallback to latest draft version
+      if (componentData.currentDraftVersion) {
+        return componentData.currentDraftVersion
+      }
+      
+      // Fallback to latest completed draft version
+      return componentData.versions
+        ?.filter((v: any) => v.status === 'COMPLETED' && v.mode === 'DRAFT')
+        .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
+    } else {
+      // In published mode, use currentPublishedVersion or fallback to latest published version
+      if (componentData.currentPublishedVersion) {
+        return componentData.currentPublishedVersion
+      }
+      
+      // Fallback to latest completed published version
+      return componentData.versions
+        ?.filter((v: any) => v.status === 'COMPLETED' && v.mode === 'PUBLISHED')
+        .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
     }
-    
-    // Fallback to latest completed version
-    return componentData.versions
-      .filter((v: any) => v.status === 'COMPLETED')
-      .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
-  }, [componentData])
+  }, [componentData, mode])
   
   if (loading) {
     return (
@@ -108,7 +128,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
         <CardContent className="flex items-center justify-center h-full p-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading AI component...</p>
+            <p className="text-gray-500">Loading...</p>
           </div>
         </CardContent>
       </Card>
@@ -146,22 +166,22 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
   
   // Component with generated content
   return (
-    <div className="w-full space-y-3">
-      {/* Component header */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border border-b-0">
-        <div className="flex items-center space-x-2">
-          <Sparkles className="w-4 h-4 text-blue-500" />
-          <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
-          <Badge variant="secondary" className="text-xs">
-            v{currentVersion.versionNumber}
-          </Badge>
-          {componentData.versions.length > 1 && (
-            <Badge variant="outline" className="text-xs">
-              {componentData.versions.length} versions
+    <div className="w-full">
+      {/* Component header - only show in edit mode */}
+      {isEditable && (
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border border-b-0 mb-3">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="w-4 h-4 text-blue-500" />
+            <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
+            <Badge variant="secondary" className="text-xs">
+              v{currentVersion.versionNumber}
             </Badge>
-          )}
-        </div>
-        {isEditable && (
+            {componentData.versions && componentData.versions.length > 1 && (
+              <Badge variant="outline" className="text-xs">
+                {componentData.versions.length} versions
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center space-x-1">
             <Button
               size="sm"
@@ -182,13 +202,13 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       
       {/* Component content */}
-      <Card className="border border-t-0 rounded-t-none">
+      <Card className={isEditable ? "border border-t-0 rounded-t-none" : "border"}>
         <CardContent className="p-6">
-          {isAISidebarOpen && currentBlockId === blockId ? (
+          {isAISidebarOpen && currentBlockId === blockId && isEditable ? (
             <div className="min-h-[200px] flex items-center justify-center relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 animate-pulse rounded-lg"></div>
               <div className="relative z-10 text-center">
@@ -210,7 +230,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
             <div className="min-h-[150px] flex items-center justify-center">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Generating component...</p>
+                <p className="text-gray-600">{isEditable ? 'Generating component...' : 'Loading...'}</p>
               </div>
             </div>
           ) : (
@@ -235,9 +255,9 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
         </CardContent>
       </Card>
       
-      {/* Component prompt/description */}
-      {currentVersion.prompt && (
-        <div className="text-xs text-gray-500 px-3 pb-2">
+      {/* Component prompt/description - only show in edit mode */}
+      {isEditable && currentVersion.prompt && (
+        <div className="text-xs text-gray-500 px-3 pb-2 mt-3">
           <strong>Prompt:</strong> {currentVersion.prompt}
         </div>
       )}
