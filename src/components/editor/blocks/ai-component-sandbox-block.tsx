@@ -63,23 +63,39 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     fetchComponentData()
   }, [blockId, mode])
   
-  // Listen for component updates
+  // Listen for component updates and sidebar changes
   useEffect(() => {
     const handleComponentApplied = (event: CustomEvent) => {
       if (event.detail.blockId === blockId) {
-        setComponentData((prev: any) => ({
-          ...prev,
-          currentVersion: event.detail.version
-        }))
+        // Refresh component data when a component is applied
+        const fetchComponentData = async () => {
+          try {
+            const response = await fetch(`/api/ai/components/by-block/${blockId}?mode=${mode}`)
+            if (response.ok) {
+              const data = await response.json()
+              setComponentData(data)
+            }
+          } catch (error) {
+            console.error('Error fetching updated component data:', error)
+          }
+        }
+        fetchComponentData()
         toast.success('Component applied successfully!')
       }
     }
     
+    const handleSidebarClosed = () => {
+      // Force re-render when sidebar closes to ensure header is visible
+      setComponentData((prev: any) => prev ? { ...prev } : prev)
+    }
+    
     window.addEventListener('ai-component-applied', handleComponentApplied as EventListener)
+    window.addEventListener('ai-sidebar-closed', handleSidebarClosed as EventListener)
     return () => {
       window.removeEventListener('ai-component-applied', handleComponentApplied as EventListener)
+      window.removeEventListener('ai-sidebar-closed', handleSidebarClosed as EventListener)
     }
-  }, [blockId])
+  }, [blockId, mode])
   
   const handleOpenSidebar = useCallback(() => {
     if (!postId) {
@@ -100,25 +116,11 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     if (!componentData) return null
     
     if (mode === 'DRAFT') {
-      // In draft mode, use currentDraftVersion or fallback to latest draft version
-      if (componentData.currentDraftVersion) {
-        return componentData.currentDraftVersion
-      }
-      
-      // Fallback to latest completed draft version
-      return componentData.versions
-        ?.filter((v: any) => v.status === 'COMPLETED' && v.mode === 'DRAFT')
-        .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
+      // In draft mode, use currentDraftVersion
+      return componentData.currentDraftVersion || null
     } else {
-      // In published mode, use currentPublishedVersion or fallback to latest published version
-      if (componentData.currentPublishedVersion) {
-        return componentData.currentPublishedVersion
-      }
-      
-      // Fallback to latest completed published version
-      return componentData.versions
-        ?.filter((v: any) => v.status === 'COMPLETED' && v.mode === 'PUBLISHED')
-        .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
+      // In published mode, use currentPublishedVersion
+      return componentData.currentPublishedVersion || null
     }
   }, [componentData, mode])
   
@@ -174,13 +176,8 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
             <Sparkles className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
             <Badge variant="secondary" className="text-xs">
-              v{currentVersion.versionNumber}
+              {mode === 'PUBLISHED' ? 'Published' : 'Draft'}
             </Badge>
-            {componentData.versions && componentData.versions.length > 1 && (
-              <Badge variant="outline" className="text-xs">
-                {componentData.versions.length} versions
-              </Badge>
-            )}
           </div>
           <div className="flex items-center space-x-1">
             <Button

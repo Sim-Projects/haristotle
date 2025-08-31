@@ -65,6 +65,11 @@ export const useAISidebar = create<AISidebarState>((set, get) => ({
       hasUnsavedChanges: false,
       isGenerating: false
     })
+    
+    // Emit event when sidebar closes
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ai-sidebar-closed'))
+    }
   },
   
   setPrompt: (prompt: string) => {

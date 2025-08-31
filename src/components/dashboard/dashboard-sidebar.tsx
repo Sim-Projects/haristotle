@@ -19,23 +19,8 @@ import { cn } from '@/lib/utils'
 
 const sidebarItems = [
   {
-    title: 'Overview',
+    title: 'Posts',
     href: '/dashboard',
-    icon: Home,
-  },
-  {
-    title: 'All Posts',
-    href: '/dashboard?filter=all',
-    icon: FileText,
-  },
-  {
-    title: 'Drafts',
-    href: '/dashboard?filter=drafts',
-    icon: PenTool,
-  },
-  {
-    title: 'Published',
-    href: '/dashboard?filter=published',
     icon: FileText,
   },
   {
@@ -63,11 +48,7 @@ export function DashboardSidebar() {
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {
-      return pathname === '/dashboard' && !filter
-    }
-    if (href.includes('filter=')) {
-      const hrefFilter = href.split('filter=')[1]
-      return pathname === '/dashboard' && filter === hrefFilter
+      return pathname === '/dashboard'
     }
     return pathname.startsWith(href)
   }
@@ -113,11 +94,6 @@ export function DashboardSidebar() {
                 >
                   <item.icon className="mr-3 h-4 w-4" />
                   {item.title}
-                  {item.title === 'Drafts' && (
-                    <Badge variant="secondary" className="ml-auto">
-                      New
-                    </Badge>
-                  )}
                 </Link>
               )
             })}

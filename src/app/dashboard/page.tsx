@@ -17,30 +17,50 @@ export default function DashboardPage() {
   const filter = searchParams.get('filter') || 'all'
   const [posts, setPosts] = useState([])
   const [stats, setStats] = useState({ total: 0, published: 0, drafts: 0, views: 0 })
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 })
+  const [latestDraft, setLatestDraft] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchDashboardData() {
+  const fetchDashboardData = async (page: number = 1) => {
       if (!session?.user?.id) return
 
       try {
-        const postsUrl = filter === 'all' 
-          ? '/api/posts/my-posts' 
-          : `/api/posts/my-posts?filter=${filter}`
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: pagination.limit.toString(),
+        })
         
-        const [postsRes, statsRes] = await Promise.all([
+        if (filter !== 'all') {
+          params.append('filter', filter)
+        }
+
+        const postsUrl = `/api/posts/my-posts?${params.toString()}`
+        
+        const [postsRes, statsRes, latestDraftRes] = await Promise.all([
           fetch(postsUrl),
           fetch('/api/stats/my-stats'),
+          fetch('/api/posts/my-posts?filter=drafts&limit=1'),
         ])
 
         if (postsRes.ok) {
           const postsData = await postsRes.json()
           setPosts(postsData.posts || postsData)
+          if (postsData.pagination) {
+            setPagination(postsData.pagination)
+          }
         }
 
         if (statsRes.ok) {
           const statsData = await statsRes.json()
           setStats(statsData)
+        }
+
+        if (latestDraftRes.ok) {
+          const latestDraftData = await latestDraftRes.json()
+          const drafts = latestDraftData.posts || latestDraftData
+          if (drafts && drafts.length > 0) {
+            setLatestDraft(drafts[0])
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -49,6 +69,7 @@ export default function DashboardPage() {
       }
     }
 
+  useEffect(() => {
     fetchDashboardData()
   }, [session?.user?.id, filter])
 
@@ -114,11 +135,24 @@ export default function DashboardPage() {
                   Create New Post
                 </Link>
               </Button>
-              <Button asChild className="w-full" variant="outline">
-                <Link href="/dashboard?filter=drafts">
+              {latestDraft ? (
+                <Button asChild className="w-full" variant="outline">
+                  <Link href={`/write/${latestDraft.id}`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    <div className="flex flex-col items-start">
+                      <span>Resume Draft</span>
+                      <span className="text-xs text-muted-foreground truncate max-w-full">
+                        #{latestDraft.id} - {latestDraft.title || 'Untitled'}
+                      </span>
+                    </div>
+                  </Link>
+                </Button>
+              ) : (
+                <Button className="w-full" variant="outline" disabled>
+                  <Edit className="mr-2 h-4 w-4" />
                   Resume Draft
-                </Link>
-              </Button>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -176,7 +210,12 @@ export default function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <PostsTable posts={posts} onUpdate={() => window.location.reload()} />
+          <PostsTable 
+            posts={posts} 
+            onUpdate={() => fetchDashboardData(pagination.page)}
+            pagination={pagination}
+            onPageChange={fetchDashboardData}
+          />
         </CardContent>
       </Card>
     </div>

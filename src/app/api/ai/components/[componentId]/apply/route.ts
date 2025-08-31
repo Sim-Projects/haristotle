@@ -63,14 +63,14 @@ export async function POST(
       )
     }
     
-    // Update the current version
+    // Update the current draft version
     const updatedComponent = await prisma.aIComponent.update({
       where: { id: componentId },
-      data: { currentVersionId: versionId },
+      data: { currentDraftVersionId: versionId },
       include: {
-        versions: {
-          orderBy: { versionNumber: 'desc' }
-        }
+        versions: true,
+        currentDraftVersion: true,
+        currentPublishedVersion: true
       }
     })
     

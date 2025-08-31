@@ -59,31 +59,6 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
     setHasUnsavedChanges(hasChanges)
   }, [title, content, post?.title, post?.content])
 
-  // Debounced auto-save
-  useEffect(() => {
-    if (!hasUnsavedChanges || !post?.id) return
-
-    const timeoutId = setTimeout(() => {
-      autoSave(content, false)
-    }, 3000) // Auto-save after 3 seconds of inactivity
-
-    return () => clearTimeout(timeoutId)
-  }, [title, content, hasUnsavedChanges, post?.id, autoSave])
-
-  // Add beforeunload protection for unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault()
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
-        return e.returnValue
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges])
-
   // Auto-save function
   const autoSave = useCallback(async (contentToSave: string, showToast: boolean = false) => {
     if (!session?.user?.id) return
@@ -127,6 +102,31 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       setIsSaving(false)
     }
   }, [title, session, post?.id])
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (!hasUnsavedChanges || !post?.id) return
+
+    const timeoutId = setTimeout(() => {
+      autoSave(content, false)
+    }, 3000) // Auto-save after 3 seconds of inactivity
+
+    return () => clearTimeout(timeoutId)
+  }, [title, content, hasUnsavedChanges, post?.id, autoSave])
+
+  // Add beforeunload protection for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   // Manual save function
   const handleSave = useCallback(async () => {
@@ -287,12 +287,14 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
               <Button
                 onClick={handlePublish}
-                disabled={isSaving || status === 'PUBLISHED' || !post?.id}
+                disabled={isSaving || (status === 'PUBLISHED' && !hasUnsavedChanges) || !post?.id}
                 size="sm"
                 title={!post?.id ? "Save as draft first before publishing" : ""}
               >
                 <Globe className="h-4 w-4 mr-2" />
-                {!post?.id ? 'Publish (save first)' : status === 'PUBLISHED' ? 'Published' : 'Publish'}
+                {!post?.id ? 'Publish (save first)' : 
+                 status === 'PUBLISHED' && hasUnsavedChanges ? 'Publish Changes' :
+                 status === 'PUBLISHED' ? 'Published' : 'Publish'}
               </Button>
             </div>
           </div>

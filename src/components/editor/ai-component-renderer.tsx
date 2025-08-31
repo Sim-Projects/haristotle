@@ -14,21 +14,27 @@ interface AIComponentRendererProps {
   onDelete?: () => void
   className?: string
   editable?: boolean
+  mode?: 'DRAFT' | 'PUBLISHED'
 }
 
-export function AIComponentRenderer({ blockId, onDelete, className = '', editable = true }: AIComponentRendererProps) {
+export function AIComponentRenderer({ blockId, onDelete, className = '', editable = true, mode = 'DRAFT' }: AIComponentRendererProps) {
   const { openSidebar, isOpen: isAISidebarOpen, currentBlockId } = useAISidebar()
   const [componentData, setComponentData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   
-  const postId = useMemo(() => {
+  const { postId, isPublishedView } = useMemo(() => {
     // Extract postId from URL or window context
     if (typeof window !== 'undefined') {
       const path = window.location.pathname
-      const match = path.match(/\/write\/([a-zA-Z0-9]+)/)
-      return match ? match[1] : null
+      const writeMatch = path.match(/\/write\/([a-zA-Z0-9]+)/)
+      const postMatch = path.match(/\/post\/([a-zA-Z0-9]+)/)
+      
+      return {
+        postId: writeMatch ? writeMatch[1] : postMatch ? postMatch[1] : null,
+        isPublishedView: !!postMatch
+      }
     }
-    return null
+    return { postId: null, isPublishedView: false }
   }, [])
   
   // Fetch component data when block loads
@@ -38,7 +44,9 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
     const fetchComponentData = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`/api/ai/components/by-block/${blockId}`)
+        // Use published mode when viewing published posts, otherwise use the provided mode or draft
+        const fetchMode = isPublishedView ? 'PUBLISHED' : (mode || 'DRAFT')
+        const response = await fetch(`/api/ai/components/by-block/${blockId}?mode=${fetchMode}`)
         if (response.ok) {
           const data = await response.json()
           setComponentData(data)
@@ -53,16 +61,26 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
     }
     
     fetchComponentData()
-  }, [blockId])
+  }, [blockId, mode, isPublishedView])
   
   // Listen for component updates
   useEffect(() => {
     const handleComponentApplied = (event: CustomEvent) => {
       if (event.detail.blockId === blockId) {
-        setComponentData((prev: any) => ({
-          ...prev,
-          currentVersion: event.detail.version
-        }))
+        // Refresh component data when a component is applied
+        const fetchComponentData = async () => {
+          try {
+            const fetchMode = isPublishedView ? 'PUBLISHED' : (mode || 'DRAFT')
+            const response = await fetch(`/api/ai/components/by-block/${blockId}?mode=${fetchMode}`)
+            if (response.ok) {
+              const data = await response.json()
+              setComponentData(data)
+            }
+          } catch (error) {
+            console.error('Error fetching updated component data:', error)
+          }
+        }
+        fetchComponentData()
         toast.success('Component applied successfully!')
       }
     }
@@ -73,14 +91,21 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
       }
     }
     
+    const handleSidebarClosed = () => {
+      // Force re-render when sidebar closes to ensure header is visible
+      setComponentData((prev: any) => prev ? { ...prev } : prev)
+    }
+    
     window.addEventListener('ai-component-applied', handleComponentApplied as EventListener)
     window.addEventListener('open-ai-sidebar', handleOpenSidebar as EventListener)
+    window.addEventListener('ai-sidebar-closed', handleSidebarClosed as EventListener)
     
     return () => {
       window.removeEventListener('ai-component-applied', handleComponentApplied as EventListener)
       window.removeEventListener('open-ai-sidebar', handleOpenSidebar as EventListener)
+      window.removeEventListener('ai-sidebar-closed', handleSidebarClosed as EventListener)
     }
-  }, [blockId])
+  }, [blockId, mode, isPublishedView])
   
   const handleOpenSidebarClick = useCallback(() => {
     if (!postId) {
@@ -98,17 +123,18 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
   
   // Get current version for rendering
   const currentVersion = useMemo(() => {
-    if (!componentData?.versions || componentData.versions.length === 0) return null
+    if (!componentData) return null
     
-    if (componentData.currentVersionId) {
-      return componentData.versions.find((v: any) => v.id === componentData.currentVersionId)
+    const viewMode = isPublishedView ? 'PUBLISHED' : (mode || 'DRAFT')
+    
+    if (viewMode === 'DRAFT') {
+      // In draft mode, use currentDraftVersion
+      return componentData.currentDraftVersion || null
+    } else {
+      // In published mode, use currentPublishedVersion
+      return componentData.currentPublishedVersion || null
     }
-    
-    // Fallback to latest completed version
-    return componentData.versions
-      .filter((v: any) => v.status === 'COMPLETED')
-      .sort((a: any, b: any) => b.versionNumber - a.versionNumber)[0] || null
-  }, [componentData])
+  }, [componentData, mode, isPublishedView])
   
   if (loading) {
     return (
@@ -161,13 +187,8 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
           <Sparkles className="w-4 h-4 text-blue-500" />
           <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
           <Badge variant="secondary" className="text-xs">
-            v{currentVersion.versionNumber}
+            {isPublishedView || mode === 'PUBLISHED' ? 'Published' : 'Draft'}
           </Badge>
-          {componentData.versions.length > 1 && (
-            <Badge variant="outline" className="text-xs">
-              {componentData.versions.length} versions
-            </Badge>
-          )}
         </div>
         {editable && (
           <div className="flex items-center space-x-1">

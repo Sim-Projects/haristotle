@@ -21,10 +21,6 @@ export async function GET(
       },
       include: {
         post: true,
-        versions: {
-          where: mode === 'PUBLISHED' ? { mode: 'PUBLISHED' } : { mode: 'DRAFT' },
-          orderBy: { versionNumber: 'desc' }
-        },
         currentDraftVersion: mode === 'DRAFT',
         currentPublishedVersion: mode === 'PUBLISHED'
       }

@@ -17,6 +17,7 @@ interface BlockNoteEditorProps {
   onSave?: (content: string) => void
   editable?: boolean
   postId?: string
+  viewMode?: 'draft' | 'published'
 }
 
 export function BlockNoteEditor({
@@ -25,6 +26,7 @@ export function BlockNoteEditor({
   onSave,
   editable = true,
   postId,
+  viewMode = 'draft',
 }: BlockNoteEditorProps) {
   const [content, setContent] = useState<string>('')
   const { isLocked } = useEditorLock()
@@ -81,12 +83,15 @@ export function BlockNoteEditor({
     getAIComponentSlashMenuItem(editor),
   ]
 
-  // Pass postId to editor for AI components to access
+  // Pass postId and viewMode to editor for AI components to access
   useEffect(() => {
-    if (editor && postId) {
-      (editor as any).postId = postId
+    if (editor) {
+      if (postId) {
+        (editor as any).postId = postId
+      }
+      (editor as any).viewMode = viewMode
     }
-  }, [editor, postId])
+  }, [editor, postId, viewMode])
   
 
   // Handle content changes

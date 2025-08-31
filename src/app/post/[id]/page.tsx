@@ -261,6 +261,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
               <BlockNoteEditor
                 initialContent={post.content}
                 editable={false}
+                viewMode="published"
               />
             ) : (
               <div className="text-center py-12 text-muted-foreground">

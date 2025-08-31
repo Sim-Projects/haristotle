@@ -38,7 +38,9 @@ import {
   Globe, 
   Archive, 
   Trash2,
-  Search
+  Search,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -55,9 +57,18 @@ interface Post {
   publishedAt?: string
 }
 
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  pages: number
+}
+
 interface PostsTableProps {
   posts: Post[]
   onUpdate: () => void
+  pagination?: Pagination
+  onPageChange?: (page: number) => void
 }
 
 const statusColors = {
@@ -67,7 +78,7 @@ const statusColors = {
   PRIVATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
 }
 
-export function PostsTable({ posts, onUpdate }: PostsTableProps) {
+export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [deletePost, setDeletePost] = useState<Post | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -151,6 +162,7 @@ export function PostsTable({ posts, onUpdate }: PostsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>ID</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Views</TableHead>
@@ -162,6 +174,11 @@ export function PostsTable({ posts, onUpdate }: PostsTableProps) {
           <TableBody>
             {filteredPosts.map((post) => (
               <TableRow key={post.id}>
+                <TableCell>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    ...{post.id.slice(-8)}
+                  </span>
+                </TableCell>
                 <TableCell>
                   <div>
                     <Link 
@@ -251,6 +268,62 @@ export function PostsTable({ posts, onUpdate }: PostsTableProps) {
       {filteredPosts.length === 0 && searchTerm && (
         <div className="text-center py-8 text-muted-foreground">
           No posts found matching "{searchTerm}"
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination && pagination.pages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <div className="text-sm text-muted-foreground">
+            Showing {Math.min((pagination.page - 1) * pagination.limit + 1, pagination.total)} to{' '}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} posts
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange && onPageChange(pagination.page - 1)}
+              disabled={pagination.page === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                let pageNum
+                if (pagination.pages <= 5) {
+                  pageNum = i + 1
+                } else if (pagination.page <= 3) {
+                  pageNum = i + 1
+                } else if (pagination.page >= pagination.pages - 2) {
+                  pageNum = pagination.pages - 4 + i
+                } else {
+                  pageNum = pagination.page - 2 + i
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={pagination.page === pageNum ? 'default' : 'outline'}
+                    size="sm"
+                    className="w-8 h-8 p-0"
+                    onClick={() => onPageChange && onPageChange(pageNum)}
+                  >
+                    {pageNum}
+                  </Button>
+                )
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange && onPageChange(pagination.page + 1)}
+              disabled={pagination.page === pagination.pages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 

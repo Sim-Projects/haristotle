@@ -52,11 +52,17 @@ export async function POST(request: NextRequest) {
     let aiComponent = componentId ? 
       await prisma.aIComponent.findUnique({
         where: { id: componentId },
-        include: { versions: true }
+        include: { 
+          currentDraftVersion: true,
+          currentPublishedVersion: true 
+        }
       }) : 
       await prisma.aIComponent.findUnique({
         where: { blockId },
-        include: { versions: true }
+        include: { 
+          currentDraftVersion: true,
+          currentPublishedVersion: true 
+        }
       })
     
     if (!aiComponent) {
@@ -65,28 +71,49 @@ export async function POST(request: NextRequest) {
           blockId,
           postId
         },
-        include: { versions: true }
+        include: { 
+          currentDraftVersion: true,
+          currentPublishedVersion: true 
+        }
       })
     }
     
-    // Generate the next version number
-    const nextVersionNumber = (aiComponent.versions.length || 0) + 1
-    
-    // Create a new version in GENERATING state (always starts as DRAFT)
-    const newVersion = await prisma.aIComponentVersion.create({
-      data: {
-        componentId: aiComponent.id,
-        prompt,
-        generatedCode: '', // Will be updated after generation
-        versionNumber: nextVersionNumber,
-        status: 'GENERATING',
-        mode: 'DRAFT'
-      }
-    })
+    // If there's already a draft version, update it; otherwise create new one
+    let newVersion
+    if (aiComponent.currentDraftVersion) {
+      // Update existing draft version
+      newVersion = await prisma.aIComponentVersion.update({
+        where: { id: aiComponent.currentDraftVersion.id },
+        data: {
+          prompt,
+          generatedCode: '', // Will be updated after generation
+          status: 'GENERATING',
+          errorMessage: null
+        }
+      })
+    } else {
+      // Create new draft version
+      newVersion = await prisma.aIComponentVersion.create({
+        data: {
+          componentId: aiComponent.id,
+          prompt,
+          generatedCode: '', // Will be updated after generation
+          versionNumber: 1, // Always 1 for draft
+          status: 'GENERATING',
+          mode: 'DRAFT'
+        }
+      })
+      
+      // Update component to reference the new draft version
+      await prisma.aIComponent.update({
+        where: { id: aiComponent.id },
+        data: { currentDraftVersionId: newVersion.id }
+      })
+    }
     
     try {
       // Generate the component using AI
-      const generatedCode = await generateReactComponent(prompt, aiComponent.versions, model)
+      const generatedCode = await generateReactComponent(prompt, aiComponent.currentPublishedVersion, model)
       
       // Update the version with the generated code
       const updatedVersion = await prisma.aIComponentVersion.update({
@@ -97,19 +124,12 @@ export async function POST(request: NextRequest) {
         }
       })
       
-      // Update the AI component's current draft version
-      await prisma.aIComponent.update({
-        where: { id: aiComponent.id },
-        data: { currentDraftVersionId: updatedVersion.id }
-      })
-      
-      // Fetch the complete component data with all versions
+      // Fetch the complete component data
       const componentData = await prisma.aIComponent.findUnique({
         where: { id: aiComponent.id },
         include: {
-          versions: {
-            orderBy: { versionNumber: 'asc' }  // Order by ascending so latest is at the end
-          }
+          currentDraftVersion: true,
+          currentPublishedVersion: true
         }
       })
       
@@ -166,21 +186,13 @@ function getModelProvider(modelName: string): { provider: 'openai' | 'anthropic'
 
 async function generateReactComponent(
   prompt: string, 
-  previousVersions: any[] = [],
+  publishedVersion: any = null,
   modelName: string = 'gpt-4.1-mini'
 ): Promise<string> {
-  // Build context from previous versions
+  // Build context from published version if available
   let context = ''
-  if (previousVersions.length > 0) {
-    const recentVersions = previousVersions
-      .filter(v => v.status === 'COMPLETED')
-      .slice(-2) // Last 2 versions for context
-    
-    if (recentVersions.length > 0) {
-      context = `\n\nPrevious iterations:\n${recentVersions
-        .map((v, i) => `Version ${v.versionNumber}:\nPrompt: ${v.prompt}\nCode: ${v.generatedCode}`)
-        .join('\n\n')}`
-    }
+  if (publishedVersion && publishedVersion.status === 'COMPLETED') {
+    context = `\n\nCurrent published version:\nPrompt: ${publishedVersion.prompt}\nCode: ${publishedVersion.generatedCode}`
   }
   
   const systemPrompt = `You are an expert React developer. Generate a React functional component based on the user's prompt.

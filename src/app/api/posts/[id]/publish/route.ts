@@ -32,6 +32,7 @@ export async function POST(
         status: true,
         title: true,
         content: true,
+        parentPostId: true,
       },
     })
 
@@ -49,12 +50,9 @@ export async function POST(
       )
     }
 
-    if (existingPost.status === 'PUBLISHED') {
-      return NextResponse.json(
-        { error: 'Post is already published' },
-        { status: 400 }
-      )
-    }
+    // Handle different publishing scenarios
+    const isAlreadyPublished = existingPost.status === 'PUBLISHED' && !existingPost.parentPostId
+    const isDraftOfPublishedPost = existingPost.status === 'DRAFT' && existingPost.parentPostId
 
     const body = await request.json()
     const validatedData = publishPostSchema.parse({ ...body, id: params.id })
@@ -64,41 +62,77 @@ export async function POST(
     const excerpt = validatedData.excerpt || extractExcerpt(validatedData.content)
 
     const publishedPost = await prisma.$transaction(async (tx) => {
-      // Update the post
-      const post = await tx.post.update({
-        where: { id: params.id },
-        data: {
-          title: validatedData.title,
-          content: validatedData.content,
-          excerpt,
-          featuredImage: validatedData.featuredImage,
-          readingTime,
-          status: 'PUBLISHED',
-          publishedAt: new Date(),
-        },
-        include: {
-          author: {
-            select: {
-              id: true,
-              name: true,
-              username: true,
-              image: true,
+      let post
+      // Use the correct post ID (parent post ID if this is a draft of a published post)
+      const targetPostId = isDraftOfPublishedPost ? existingPost.parentPostId! : params.id
+      
+      if (isDraftOfPublishedPost) {
+        // This is a draft version of a published post - update the original post
+        const parentPostId = existingPost.parentPostId!
+        
+        post = await tx.post.update({
+          where: { id: parentPostId },
+          data: {
+            title: validatedData.title,
+            content: validatedData.content,
+            excerpt,
+            featuredImage: validatedData.featuredImage,
+            readingTime,
+            publishedAt: new Date(), // Update published time
+          },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                image: true,
+              },
             },
           },
-        },
-      })
+        })
+        
+        // Delete the draft version after publishing
+        await tx.post.delete({
+          where: { id: params.id },
+        })
+      } else {
+        // This is a regular draft post - publish it normally
+        post = await tx.post.update({
+          where: { id: params.id },
+          data: {
+            title: validatedData.title,
+            content: validatedData.content,
+            excerpt,
+            featuredImage: validatedData.featuredImage,
+            readingTime,
+            status: 'PUBLISHED',
+            publishedAt: new Date(),
+          },
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                image: true,
+              },
+            },
+          },
+        })
+      }
 
       // Update categories
       if (validatedData.categoryIds.length > 0) {
         // Remove existing categories
         await tx.categoryOnPost.deleteMany({
-          where: { postId: params.id },
+          where: { postId: targetPostId },
         })
         
         // Add new categories
         await tx.categoryOnPost.createMany({
           data: validatedData.categoryIds.map((categoryId) => ({
-            postId: params.id,
+            postId: targetPostId,
             categoryId,
           })),
         })
@@ -108,13 +142,13 @@ export async function POST(
       if (validatedData.tagIds.length > 0) {
         // Remove existing tags
         await tx.tagOnPost.deleteMany({
-          where: { postId: params.id },
+          where: { postId: targetPostId },
         })
         
         // Add new tags
         await tx.tagOnPost.createMany({
           data: validatedData.tagIds.map((tagId) => ({
-            postId: params.id,
+            postId: targetPostId,
             tagId,
           })),
         })
@@ -122,7 +156,7 @@ export async function POST(
 
       // Also publish all AI components in this post
       const aiComponents = await tx.aIComponent.findMany({
-        where: { postId: params.id },
+        where: { postId: targetPostId },
         include: {
           currentDraftVersion: true,
           currentPublishedVersion: true
@@ -149,9 +183,7 @@ export async function POST(
                 componentId: aiComponent.id,
                 prompt: aiComponent.currentDraftVersion.prompt,
                 generatedCode: aiComponent.currentDraftVersion.generatedCode,
-                versionNumber: (await tx.aIComponentVersion.count({ 
-                  where: { componentId: aiComponent.id } 
-                })) + 1,
+                versionNumber: 1, // Always version 1 for published
                 status: aiComponent.currentDraftVersion.status,
                 mode: 'PUBLISHED',
                 errorMessage: aiComponent.currentDraftVersion.errorMessage,
@@ -167,7 +199,7 @@ export async function POST(
         }
       }
 
-      return post
+      return { ...post, id: targetPostId }
     })
 
     return NextResponse.json(publishedPost)
