@@ -80,61 +80,47 @@ async function generateReactComponent(
   existingPrompt: string = '',
   modelName: string = DEFAULT_MODEL
 ): Promise<string> {
-  // Build context from existing code if available
-  let context = ''
-  if (existingCode && existingPrompt) {
-    context = `\n\nExisting component:\nPrompt: ${existingPrompt}\nCode: ${existingCode}\n\nPlease modify or enhance this component based on the new prompt.`
-  } else if (existingCode) {
-    context = `\n\nExisting component code:\n${existingCode}\n\nPlease modify or enhance this component based on the new prompt.`
-  }
-  
-  const systemPrompt = `You are an expert React developer. Generate a React functional component based on the user's prompt.
+  const systemPrompt = `You are a React component specialist. Create clean, functional React components that follow modern best practices.
 
-IMPORTANT RULES:
-1. Return ONLY the React component code
-2. Use only these allowed imports/components:
-   - React hooks: useState, useEffect, useCallback, useMemo
-   - UI Components: Button, Card, CardContent, CardHeader, CardTitle, Badge, Input, Textarea, Alert, AlertDescription, Separator, Switch, Label
-   - Icons: AlertCircle, CheckCircle, Clock, Heart, Star, Plus, Minus, Eye, EyeOff, Download, Upload, Search, Filter, Settings, User, Mail, Phone, Calendar, MapPin, Globe, Hash, DollarSign
-   - All components are already imported in the scope
-   - Make sure the components don't overflow horizontally and wraps to the next line if needed
-   - add some margin to each component like button, input, label, etc for better spacing
+## CORE REQUIREMENTS
+- Return ONLY the React component code (no explanations, comments, markdown formatting and definitely no mentioning of language like tsx or typescript)
+- Component must be a named or default function using TypeScript
+- Use Tailwind CSS for all styling
+- Ensure responsive design and proper spacing
 
-3. The component should be a default function or named function
-4. Use TypeScript with proper types
-5. Include proper error handling where appropriate
-6. Make sure the components wrap properly and do not overflow
-7. Use Tailwind CSS classes for styling
-8. Do NOT include any imports - they are already available
-9. Do NOT use any external libraries not listed above
-10. Keep components self-contained and functional
-11. Important: Do not mention the language in the code like tsx or typescript
+## AVAILABLE RESOURCES
+### React Hooks
+useState, useEffect, useCallback, useMemo
 
-Example format:
-\`\`\`
-function MyComponent() {
-  const [count, setCount] = useState(0)
+### UI Components  
+Button, Card, CardContent, CardHeader, CardTitle, Badge, Input, Textarea, Alert, AlertDescription, Separator, Switch, Label
+
+### Icons
+AlertCircle, CheckCircle, Clock, Heart, Star, Plus, Minus, Eye, EyeOff, Download, Upload, Search, Filter, Settings, User, Mail, Phone, Calendar, MapPin, Globe, Hash, DollarSign
+
+*All imports are pre-loaded - DO NOT include import statements*
+
+## DESIGN GUIDELINES
+- Prevent horizontal overflow - components must wrap properly
+- Add appropriate margins/padding between elements for good spacing
+- Use semantic HTML structure
+- Implement proper error boundaries where needed
+- Keep components self-contained and reusable
+
+## OUTPUT FORMAT
+Return only the component function:
+
+function ComponentName() {
+  const [state, setState] = useState(defaultValue)
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Counter</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center space-x-4">
-          <Button onClick={() => setCount(count - 1)}>
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span className="text-lg font-semibold">{count}</span>
-          <Button onClick={() => setCount(count + 1)}>
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
+    <Card className="w-full max-w-md mx-auto">
+      <CardContent className="p-4">
+        {/* Component content */}
       </CardContent>
     </Card>
   )
-}
-\`\`\`${context}`
+}`
   
   const openRouterModel = getOpenRouterModel(modelName)
   
@@ -150,13 +136,24 @@ function MyComponent() {
     apiKey: process.env.OPENROUTER_API_KEY,
   })
   
+  // Build conversation history for regenerations
+  const messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }> = [
+    { role: 'system', content: systemPrompt }
+  ]
+  
+  // For regenerations, add the previous conversation context
+  if (existingCode && existingPrompt) {
+    messages.push({ role: 'user', content: existingPrompt })
+    messages.push({ role: 'assistant', content: existingCode })
+    messages.push({ role: 'user', content: `Please modify the component: ${prompt}` })
+  } else {
+    messages.push({ role: 'user', content: prompt })
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: openRouterModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Create a React component: ${prompt}` }
-      ],
+      messages,
       temperature: 0.7,
     })
     

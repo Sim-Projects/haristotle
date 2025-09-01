@@ -156,7 +156,7 @@ export function ReactComponentRuntime({
           )}
           
           {/* Component Preview */}
-          <div className="border rounded-lg p-4 bg-background min-h-[200px] flex items-center justify-center overflow-hidden">
+          <div className="p-4 bg-background min-h-[200px] flex items-center justify-center overflow-hidden">
             <div className="w-full max-w-full overflow-auto break-words">
               <div style={{ wordWrap: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>
                 <LivePreview />

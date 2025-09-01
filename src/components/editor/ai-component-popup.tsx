@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 interface AIComponentData {
   generatedCode: string
   prompt: string
+  promptHistory?: string[]
   status: 'empty' | 'generating' | 'completed' | 'failed'
   errorMessage: string
 }
@@ -36,7 +37,7 @@ interface AIComponentPopupProps {
   onClose: () => void
   currentBlockId: string | null
   currentComponentData: AIComponentData | null
-  onApply: (componentData: AIComponentData) => void
+  onApply: (componentData: AIComponentData, shouldClose?: boolean) => void
 }
 
 export function AIComponentPopup({ 
@@ -122,6 +123,23 @@ export function AIComponentPopup({
     }
   }, [isOpen, currentComponentData])
 
+  // Listen for component updates to keep popup in sync
+  useEffect(() => {
+    if (!isOpen || !currentBlockId) return
+
+    const handleComponentUpdate = (event: CustomEvent) => {
+      if (event.detail.blockId === currentBlockId && event.detail.componentData) {
+        // Update our local component data to reflect the applied component
+        // This will be used as the new "current" component
+      }
+    }
+
+    window.addEventListener('ai-component-updated', handleComponentUpdate as EventListener)
+    return () => {
+      window.removeEventListener('ai-component-updated', handleComponentUpdate as EventListener)
+    }
+  }, [isOpen, currentBlockId])
+
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error('Please enter a prompt for the component')
@@ -158,6 +176,10 @@ export function AIComponentPopup({
       
       if (result.componentData) {
         setNewComponentData(result.componentData)
+        
+        // Check if this is the first generation
+        const isFirstGeneration = !currentComponentData || currentComponentData.status === 'empty'
+        
         // Show comparison if there's existing content
         if (currentComponentData && currentComponentData.status !== 'empty') {
           setShowComparison(true)
@@ -165,7 +187,16 @@ export function AIComponentPopup({
           // No existing content, can apply directly
           setShowComparison(false)
         }
-        toast.success('Component generated successfully!')
+        
+        // Auto-apply if this is the first generation
+        if (isFirstGeneration && result.componentData.status === 'completed') {
+          console.log('🚀 Auto-applying first generation component', result.componentData)
+          onApply(result.componentData, true) // true = close popup after apply
+          toast.success('Component generated and applied automatically!')
+        } else {
+          console.log('🔄 Component generated, waiting for manual apply', result.componentData)
+          toast.success('Component generated successfully!')
+        }
       } else {
         toast.error('Invalid response from API')
       }
@@ -185,11 +216,10 @@ export function AIComponentPopup({
 
   const handleAccept = useCallback(() => {
     if (newComponentData) {
-      onApply(newComponentData)
-      onClose()
+      onApply(newComponentData, false) // false = don't close popup for manual apply
       toast.success('Component applied successfully!')
     }
-  }, [newComponentData, onApply, onClose])
+  }, [newComponentData, onApply])
 
   const handleDecline = useCallback(() => {
     setNewComponentData(null)

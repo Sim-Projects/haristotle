@@ -157,9 +157,26 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
       
       // Update component data with new version
       if (result.componentData) {
+        // Check if this is the first generation BEFORE updating state
+        const isFirstGeneration = !componentData?.generatedCode || componentData.status === 'empty'
+        
         setComponentData(result.componentData)
         setActiveTab('preview')
-        toast.success('Component generated successfully!')
+        
+        // Auto-apply if this is the first generation (no existing code)
+        if (isFirstGeneration && result.componentData.status === 'completed') {
+          // Auto-apply the component
+          const event = new CustomEvent('ai-component-applied', {
+            detail: {
+              blockId: currentBlockId,
+              componentData: result.componentData
+            }
+          })
+          window.dispatchEvent(event)
+          toast.success('Component generated and applied automatically!')
+        } else {
+          toast.success('Component generated successfully!')
+        }
       }
     } catch (error) {
       console.error('Error generating component:', error)
@@ -198,7 +215,6 @@ export function AIComponentSidebar({ postId }: AIComponentSidebarProps) {
       window.dispatchEvent(event)
       
       toast.success('Component applied to editor!')
-      closeSidebar()
     } catch (error) {
       console.error('Error applying component:', error)
       toast.error('Failed to apply component')

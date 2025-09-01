@@ -5,6 +5,7 @@ import { create } from 'zustand'
 interface AIComponentData {
   generatedCode: string
   prompt: string
+  promptHistory?: string[]
   status: 'empty' | 'generating' | 'completed' | 'failed'
   errorMessage: string
 }

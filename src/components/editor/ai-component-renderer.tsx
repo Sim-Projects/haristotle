@@ -264,8 +264,8 @@ export function AIComponentRenderer({ blockId, onDelete, className = '', editabl
         </CardContent>
       </Card>
       
-      {/* Component prompt/description */}
-      {currentVersion.prompt && (
+      {/* Component prompt/description - only show in edit mode */}
+      {editable && currentVersion.prompt && (
         <div className="text-xs text-gray-500 px-3 pb-2">
           <strong>Prompt:</strong> {currentVersion.prompt}
         </div>

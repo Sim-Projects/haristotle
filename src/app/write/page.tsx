@@ -29,8 +29,9 @@ export default function WritePage() {
   const { isOpen, closePopup, currentBlockId, currentComponentData } = useAIComponentPopup()
   
   // Handle applying component updates
-  const handleApplyComponent = (componentData: any) => {
+  const handleApplyComponent = (componentData: any, shouldClose: boolean = false) => {
     if (currentBlockId) {
+      console.log('🔄 Applying component to block:', currentBlockId, componentData)
       // Dispatch event to update the specific block
       const updateEvent = new CustomEvent('ai-component-updated', {
         detail: {
@@ -39,7 +40,10 @@ export default function WritePage() {
         }
       })
       window.dispatchEvent(updateEvent)
-      closePopup()
+      
+      if (shouldClose) {
+        closePopup()
+      }
     }
   }
 

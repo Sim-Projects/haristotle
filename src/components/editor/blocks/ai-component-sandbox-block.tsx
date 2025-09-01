@@ -30,6 +30,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
   const componentData = useMemo(() => ({
     generatedCode: block.props.generatedCode || '',
     prompt: block.props.prompt || '',
+    promptHistory: block.props.promptHistory || [],
     status: block.props.status || 'empty',
     errorMessage: block.props.errorMessage || '',
   }), [block.props])
@@ -39,17 +40,26 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     openPopup(blockId, componentData)
   }, [blockId, componentData, openPopup])
 
-  // Listen for component updates from popup
+  // Listen for component updates from popup and sidebar
   useEffect(() => {
     const handleComponentUpdate = (event: CustomEvent) => {
       if (event.detail.blockId === blockId && event.detail.componentData) {
         console.log('📥 Received component update for block:', blockId, event.detail.componentData)
+        
+        // Build new prompt history
+        const currentHistory = block.props.promptHistory || []
+        const newPrompt = event.detail.componentData.prompt
+        const newHistory = newPrompt && !currentHistory.includes(newPrompt) 
+          ? [...currentHistory, newPrompt]
+          : currentHistory
+        
         // Update block props with new component data
         editor.updateBlock(block, {
           props: {
             ...block.props,
             generatedCode: event.detail.componentData.generatedCode,
             prompt: event.detail.componentData.prompt,
+            promptHistory: newHistory,
             status: event.detail.componentData.status,
             errorMessage: event.detail.componentData.errorMessage,
           }
@@ -57,9 +67,12 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
       }
     }
     
+    // Listen to both event types
     window.addEventListener('ai-component-updated', handleComponentUpdate as EventListener)
+    window.addEventListener('ai-component-applied', handleComponentUpdate as EventListener)
     return () => {
       window.removeEventListener('ai-component-updated', handleComponentUpdate as EventListener)
+      window.removeEventListener('ai-component-applied', handleComponentUpdate as EventListener)
     }
   }, [blockId, block, editor])
   
@@ -103,7 +116,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
     <div className="w-full">
       {/* Component header - only show in edit mode */}
       {isEditable && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border border-b-0 mb-3">
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border-b mb-3">
           <div className="flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
@@ -174,9 +187,9 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
       </Card>
       
       {/* Component prompt/description - only show in edit mode */}
-      {isEditable && componentData.prompt && (
+      {isEditable && componentData.promptHistory.length > 0 && (
         <div className="text-xs text-gray-500 px-3 pb-2 mt-3">
-          <strong>Prompt:</strong> {componentData.prompt}
+          <strong>Prompts:</strong> {componentData.promptHistory.join(' → ')}
         </div>
       )}
     </div>
@@ -200,6 +213,9 @@ export const AIComponentSandboxBlock = createReactBlockSpec(
       },
       prompt: {
         default: '' as const,
+      },
+      promptHistory: {
+        default: [] as const, // Array of all prompts used to create this component
       },
       status: {
         default: 'empty' as const, // 'empty', 'generating', 'completed', 'failed'
