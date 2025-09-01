@@ -9,9 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { DynamicBlockNoteEditor as BlockNoteEditor } from './dynamic-block-note-editor'
-import { AIComponentSidebar } from './ai-component-sidebar'
 import { AISandboxHelp } from './ai-sandbox-help'
-import { useNavigationProtection, useAISidebar } from '@/hooks/use-ai-sidebar'
 import { Save, Eye, Globe, Lock, Clock, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -38,11 +36,6 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   
-  // Add navigation protection for AI sidebar
-  useNavigationProtection()
-  
-  // Get AI sidebar state
-  const { isOpen: isAISidebarOpen, hasUnsavedChanges: hasAIUnsavedChanges } = useAISidebar()
 
   // Auto-focus title for new posts
   useEffect(() => {
@@ -209,19 +202,13 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b">
         {/* Unsaved changes indicator */}
-        {(hasUnsavedChanges || hasAIUnsavedChanges) && (
+        {hasUnsavedChanges && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
               <div className="flex items-center space-x-2 text-amber-800">
                 <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium">
-                  You have unsaved changes
-                  {hasUnsavedChanges && hasAIUnsavedChanges 
-                    ? ' in your post and the AI component generator'
-                    : hasUnsavedChanges 
-                    ? ' in your post' 
-                    : ' in the AI component generator'
-                  }
+                  You have unsaved changes in your post
                 </span>
               </div>
               <div className="text-xs text-amber-700">
@@ -303,9 +290,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
       {/* Editor Content */}
       <div className="transition-all duration-300 ease-in-out">
-        <div className={`max-w-4xl mx-auto px-4 py-8 transition-all duration-300 ease-in-out ${
-          isAISidebarOpen ? 'mr-[50%]' : ''
-        }`}>
+        <div className="max-w-4xl mx-auto px-4 py-8">
           <Card className="p-8">
           {/* Title Input */}
           <div className="mb-8">
@@ -337,12 +322,6 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
           </Card>
         </div>
         
-        {/* AI Component Sidebar */}
-        {post?.id && (
-          <div className="w-1/2">
-            <AIComponentSidebar postId={post.id} />
-          </div>
-        )}
       </div>
 
       {/* Footer */}

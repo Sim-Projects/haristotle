@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { openai } from '@ai-sdk/openai'
-import { anthropic } from '@ai-sdk/anthropic'
-import { generateText } from 'ai'
+import OpenAI from 'openai'
 import { z } from 'zod'
+import { DEFAULT_MODEL, getOpenRouterModel } from '@/lib/openrouter-models'
 
 const generateComponentSchema = z.object({
   prompt: z.string().min(1, 'Prompt is required'),
   blockId: z.string().min(1, 'Block ID is required'),
-  postId: z.string().cuid('Invalid post ID'),
-  componentId: z.string().optional(),
-  model: z.string().optional().default('gpt-4.1-mini')
+  existingCode: z.string().optional().default(''),
+  existingPrompt: z.string().optional().default(''),
+  model: z.string().optional().default(DEFAULT_MODEL)
 })
 
 type GenerateComponentInput = z.infer<typeof generateComponentSchema>
@@ -30,129 +28,33 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json()
     const validatedData = generateComponentSchema.parse(body)
-    
-    const { prompt, blockId, postId, componentId, model } = validatedData
-    
-    // Verify the user owns the post
-    const post = await prisma.post.findFirst({
-      where: {
-        id: postId,
-        authorId: session.user.id
-      }
-    })
-    
-    if (!post) {
-      return NextResponse.json(
-        { error: 'Post not found or access denied' },
-        { status: 404 }
-      )
-    }
-    
-    // Find or create the AI component record
-    let aiComponent = componentId ? 
-      await prisma.aIComponent.findUnique({
-        where: { id: componentId },
-        include: { 
-          currentDraftVersion: true,
-          currentPublishedVersion: true 
-        }
-      }) : 
-      await prisma.aIComponent.findUnique({
-        where: { blockId },
-        include: { 
-          currentDraftVersion: true,
-          currentPublishedVersion: true 
-        }
-      })
-    
-    if (!aiComponent) {
-      aiComponent = await prisma.aIComponent.create({
-        data: {
-          blockId,
-          postId
-        },
-        include: { 
-          currentDraftVersion: true,
-          currentPublishedVersion: true 
-        }
-      })
-    }
-    
-    // If there's already a draft version, update it; otherwise create new one
-    let newVersion
-    if (aiComponent.currentDraftVersion) {
-      // Update existing draft version
-      newVersion = await prisma.aIComponentVersion.update({
-        where: { id: aiComponent.currentDraftVersion.id },
-        data: {
-          prompt,
-          generatedCode: '', // Will be updated after generation
-          status: 'GENERATING',
-          errorMessage: null
-        }
-      })
-    } else {
-      // Create new draft version
-      newVersion = await prisma.aIComponentVersion.create({
-        data: {
-          componentId: aiComponent.id,
-          prompt,
-          generatedCode: '', // Will be updated after generation
-          versionNumber: 1, // Always 1 for draft
-          status: 'GENERATING',
-          mode: 'DRAFT'
-        }
-      })
-      
-      // Update component to reference the new draft version
-      await prisma.aIComponent.update({
-        where: { id: aiComponent.id },
-        data: { currentDraftVersionId: newVersion.id }
-      })
-    }
+    const { prompt, blockId, existingCode, existingPrompt, model } = validatedData
     
     try {
-      // Generate the component using AI
-      const generatedCode = await generateReactComponent(prompt, aiComponent.currentPublishedVersion, model)
-      
-      // Update the version with the generated code
-      const updatedVersion = await prisma.aIComponentVersion.update({
-        where: { id: newVersion.id },
-        data: {
-          generatedCode,
-          status: 'COMPLETED'
-        }
-      })
-      
-      // Fetch the complete component data
-      const componentData = await prisma.aIComponent.findUnique({
-        where: { id: aiComponent.id },
-        include: {
-          currentDraftVersion: true,
-          currentPublishedVersion: true
-        }
-      })
+      // Generate the component using AI with existing code as context
+      const generatedCode = await generateReactComponent(prompt, existingCode, existingPrompt, model)
       
       return NextResponse.json({
         success: true,
-        componentData
+        componentData: {
+          generatedCode,
+          prompt,
+          status: 'completed',
+          errorMessage: ''
+        }
       })
     } catch (error) {
       console.error('AI generation error:', error)
       
-      // Update the version with error status
-      await prisma.aIComponentVersion.update({
-        where: { id: newVersion.id },
-        data: {
-          status: 'FAILED',
+      return NextResponse.json({
+        success: false,
+        componentData: {
+          generatedCode: existingCode,
+          prompt,
+          status: 'failed',
           errorMessage: error instanceof Error ? error.message : 'Unknown error'
         }
-      })
-      
-      return NextResponse.json(
-        { error: 'Failed to generate component' },
-        { status: 500 }
-      )
+      }, { status: 500 })
     }
   } catch (error) {
     console.error('API error:', error)
@@ -171,28 +73,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Map user-friendly model names to actual model identifiers
-function getModelProvider(modelName: string): { provider: 'openai' | 'anthropic', model: string } {
-  const modelMap: { [key: string]: { provider: 'openai' | 'anthropic', model: string } } = {
-    'gpt-4.1-mini': { provider: 'openai', model: 'gpt-4o-mini' },
-    'gpt-4.1': { provider: 'openai', model: 'gpt-4o' },
-    'gpt-5-mini': { provider: 'openai', model: 'gpt-4o-mini' },
-    'claude-sonnet-3.7': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-    'claude-sonnet-4': { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' }
-  }
-  
-  return modelMap[modelName] || { provider: 'openai', model: 'gpt-4o-mini' }
-}
 
 async function generateReactComponent(
   prompt: string, 
-  publishedVersion: any = null,
-  modelName: string = 'gpt-4.1-mini'
+  existingCode: string = '',
+  existingPrompt: string = '',
+  modelName: string = DEFAULT_MODEL
 ): Promise<string> {
-  // Build context from published version if available
+  // Build context from existing code if available
   let context = ''
-  if (publishedVersion && publishedVersion.status === 'COMPLETED') {
-    context = `\n\nCurrent published version:\nPrompt: ${publishedVersion.prompt}\nCode: ${publishedVersion.generatedCode}`
+  if (existingCode && existingPrompt) {
+    context = `\n\nExisting component:\nPrompt: ${existingPrompt}\nCode: ${existingCode}\n\nPlease modify or enhance this component based on the new prompt.`
+  } else if (existingCode) {
+    context = `\n\nExisting component code:\n${existingCode}\n\nPlease modify or enhance this component based on the new prompt.`
   }
   
   const systemPrompt = `You are an expert React developer. Generate a React functional component based on the user's prompt.
@@ -210,12 +103,12 @@ IMPORTANT RULES:
 3. The component should be a default function or named function
 4. Use TypeScript with proper types
 5. Include proper error handling where appropriate
-6. Make components responsive and accessible
+6. Make sure the components wrap properly and do not overflow
 7. Use Tailwind CSS classes for styling
 8. Do NOT include any imports - they are already available
 9. Do NOT use any external libraries not listed above
 10. Keep components self-contained and functional
-11. Important: Do not mention the language or framework in the code
+11. Important: Do not mention the language in the code like tsx or typescript
 
 Example format:
 \`\`\`
@@ -243,19 +136,46 @@ function MyComponent() {
 }
 \`\`\`${context}`
   
-  const modelConfig = getModelProvider(modelName)
-  const model = modelConfig.provider === 'openai' 
-    ? openai(modelConfig.model)
-    : anthropic(modelConfig.model)
+  const openRouterModel = getOpenRouterModel(modelName)
   
-  const { text } = await generateText({
-    model,
-    system: systemPrompt,
-    prompt: `Create a React component: ${prompt}`,
-    temperature: 0.7
+  // Validate OpenRouter API key
+  if (!process.env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY environment variable is not set')
+  }
+  
+  console.log('Using model:', openRouterModel)
+  
+  const openai = new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: process.env.OPENROUTER_API_KEY,
   })
   
-  // Extract code from markdown if present
-  const codeMatch = text.match(/```(?:tsx?|javascript)?\n?([\s\S]*?)\n?```/)
-  return codeMatch ? codeMatch[1].trim() : text.trim()
+  try {
+    const completion = await openai.chat.completions.create({
+      model: openRouterModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Create a React component: ${prompt}` }
+      ],
+      temperature: 0.7,
+    })
+    
+    const text = completion.choices[0]?.message?.content
+    
+    if (!text) {
+      throw new Error('No response from OpenRouter API')
+    }
+    
+    // Check if response is HTML (error page) instead of expected text
+    if (text.startsWith('<!DOCTYPE html') || text.startsWith('<html')) {
+      throw new Error('OpenRouter returned HTML error page instead of AI response. Check API key and model availability.')
+    }
+    
+    // Extract code from markdown if present
+    const codeMatch = text.match(/```(?:tsx?|javascript)?\n?([\s\S]*?)\n?```/)
+    return codeMatch ? codeMatch[1].trim() : text.trim()
+  } catch (error) {
+    console.error('OpenRouter API error:', error)
+    throw new Error(`AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }

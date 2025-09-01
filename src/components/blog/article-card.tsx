@@ -78,11 +78,11 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
               )}
 
               {/* Title */}
-              <Link href={`/post/${post.id}`}>
+              <a href={`/post/${post.id}`}>
                 <h2 className="text-2xl font-bold mb-3 line-clamp-2 hover:text-primary cursor-pointer">
                   {post.title}
                 </h2>
-              </Link>
+              </a>
 
               {/* Excerpt */}
               {post.excerpt && (
@@ -179,7 +179,7 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
 
   // Default variant
   return (
-    <Link href={`/post/${post.id}`} className="block">
+    <a href={`/post/${post.id}`} className="block">
       <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
         {/* Featured Image */}
         {post.featuredImage && (
@@ -230,6 +230,6 @@ export function ArticleCard({ post, variant = 'default' }: ArticleCardProps) {
           </div>
         </div>
       </Card>
-    </Link>
+    </a>
   )
 }

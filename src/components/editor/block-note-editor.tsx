@@ -31,18 +31,6 @@ export function BlockNoteEditor({
   const [content, setContent] = useState<string>('')
   const { isLocked } = useEditorLock()
 
-  // Parse initial content
-  const parsedInitialContent = useMemo(() => {
-    if (!initialContent) return undefined
-    
-    try {
-      return JSON.parse(initialContent) as PartialBlock[]
-    } catch (error) {
-      console.error('Error parsing initial content:', error)
-      return undefined
-    }
-  }, [initialContent])
-
   // Create custom schema with AI component block
   const schema = BlockNoteSchema.create({
     blockSpecs: {
@@ -51,10 +39,32 @@ export function BlockNoteEditor({
     },
   })
 
+  // Parse initial content with fallback to default block
+  const parsedInitialContent = useMemo(() => {
+    if (!initialContent) return undefined
+    
+    try {
+      const parsed = JSON.parse(initialContent) as PartialBlock[]
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : undefined
+    } catch (error) {
+      console.error('Error parsing initial content:', error)
+      return undefined
+    }
+  }, [initialContent])
+
   // Create BlockNote editor instance with custom schema
   const editor = useCreateBlockNote({
     schema,
-    initialContent: parsedInitialContent,
+    initialContent: parsedInitialContent || [{
+      type: "paragraph",
+      props: {
+        textAlignment: "left",
+        backgroundColor: "default",
+        textColor: "default"
+      },
+      content: [],
+      children: []
+    }]
   })
 
   // Custom AI Component slash menu item
@@ -106,9 +116,9 @@ export function BlockNoteEditor({
     }
 
     editor.onChange(handleUpdate)
-    
     return () => {
-      // Cleanup if needed
+      // Clean up by setting content to empty
+      setContent('')
     }
   }, [editor, onChange])
 

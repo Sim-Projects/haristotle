@@ -22,7 +22,12 @@ export async function GET(
       include: {
         post: true,
         currentDraftVersion: mode === 'DRAFT',
-        currentPublishedVersion: mode === 'PUBLISHED'
+        currentPublishedVersion: mode === 'PUBLISHED',
+        versions: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
       }
     })
     

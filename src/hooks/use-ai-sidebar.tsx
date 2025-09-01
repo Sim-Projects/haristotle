@@ -3,21 +3,11 @@
 import { create } from 'zustand'
 import { useEffect, useCallback } from 'react'
 
-interface AIComponentVersion {
-  id: string
-  prompt: string
-  generatedCode: string
-  versionNumber: number
-  status: 'GENERATING' | 'COMPLETED' | 'FAILED'
-  errorMessage?: string | null
-  createdAt: string
-}
-
 interface AIComponentData {
-  id: string
-  blockId: string
-  currentVersionId?: string | null
-  versions: AIComponentVersion[]
+  generatedCode: string
+  prompt: string
+  status: 'empty' | 'generating' | 'completed' | 'failed'
+  errorMessage: string
 }
 
 interface AISidebarState {

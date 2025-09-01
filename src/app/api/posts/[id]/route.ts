@@ -6,14 +6,14 @@ import { updatePostSchema } from '@/lib/validations/post'
 import { generateUniqueSlug, calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
 
 interface RouteContext {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteContext
 ) {
-  const params = await context.params
+  const { params } = context
   try {
     const post = await prisma.post.findUnique({
       where: { id: params.id },
@@ -70,7 +70,7 @@ export async function PUT(
   request: NextRequest,
   context: RouteContext
 ) {
-  const params = await context.params
+  const { params } = context
   try {
     const session = await getServerSession(authOptions)
 
@@ -429,7 +429,7 @@ export async function DELETE(
   request: NextRequest,
   context: RouteContext
 ) {
-  const params = await context.params
+  const { params } = context
   try {
     const session = await getServerSession(authOptions)
 

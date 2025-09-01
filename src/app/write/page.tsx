@@ -6,6 +6,8 @@ import { useSession } from 'next-auth/react'
 import { PostEditor } from '@/components/editor/post-editor'
 import { AuthRequired } from '@/components/auth/auth-required'
 import { Header } from '@/components/layout/header'
+import { AIComponentPopup } from '@/components/editor/ai-component-popup'
+import { useAIComponentPopup } from '@/hooks/use-ai-component-popup'
 import { toast } from 'sonner'
 
 interface Post {
@@ -22,6 +24,24 @@ export default function WritePage() {
   const [loading, setLoading] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
+  
+  // AI Component Popup state
+  const { isOpen, closePopup, currentBlockId, currentComponentData } = useAIComponentPopup()
+  
+  // Handle applying component updates
+  const handleApplyComponent = (componentData: any) => {
+    if (currentBlockId) {
+      // Dispatch event to update the specific block
+      const updateEvent = new CustomEvent('ai-component-updated', {
+        detail: {
+          blockId: currentBlockId,
+          componentData: componentData
+        }
+      })
+      window.dispatchEvent(updateEvent)
+      closePopup()
+    }
+  }
 
   useEffect(() => {
     async function createNewPost() {
@@ -87,6 +107,15 @@ export default function WritePage() {
       >
         <PostEditor post={post} isNew={true} />
       </AuthRequired>
+      
+      {/* AI Component Popup - Global */}
+      <AIComponentPopup
+        isOpen={isOpen}
+        onClose={closePopup}
+        currentBlockId={currentBlockId}
+        currentComponentData={currentComponentData}
+        onApply={handleApplyComponent}
+      />
     </div>
   )
 }

@@ -181,18 +181,20 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                 </TableCell>
                 <TableCell>
                   <div>
-                    <Link 
-                      href={`/write/${post.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {post.title || 'Untitled'}
-                    </Link>
-                    {post.status === 'PUBLISHED' && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        <Link href={`/post/${post.id}`} className="hover:underline">
-                          View published
-                        </Link>
-                      </div>
+                    {post.status === 'PUBLISHED' ? (
+                      <a 
+                        href={`/post/${post.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {post.title || 'Untitled'}
+                      </a>
+                    ) : (
+                      <a 
+                        href={`/write/${post.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {post.title || 'Untitled'}
+                      </a>
                     )}
                   </div>
                 </TableCell>
