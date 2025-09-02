@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createPostSchema } from '@/lib/validations/post'
-import { generateUniqueSlug, calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
+import { calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
 
 export async function GET(request: NextRequest) {
   try {
