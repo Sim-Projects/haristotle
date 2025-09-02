@@ -192,7 +192,7 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                     <TableRow className="border-b-0">
                       <TableCell rowSpan={hasPublished && hasDraft ? 2 : 1}>
                         <span className="text-xs font-mono text-muted-foreground">
-                          ...{post.id.slice(-8)}
+                          {post.id.slice(-9)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -252,7 +252,7 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                       {!hasPublished && (
                         <TableCell>
                           <span className="text-xs font-mono text-muted-foreground">
-                            ...{post.id.slice(-8)}
+                            {post.id.slice(-9)}
                           </span>
                         </TableCell>
                       )}
@@ -343,7 +343,7 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                     <TableRow>
                       <TableCell>
                         <span className="text-xs font-mono text-muted-foreground">
-                          ...{post.id.slice(-8)}
+                          {post.id.slice(-9)}
                         </span>
                       </TableCell>
                       <TableCell>
