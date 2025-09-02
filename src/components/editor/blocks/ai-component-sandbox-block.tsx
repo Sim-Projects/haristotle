@@ -30,7 +30,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
   const componentData = useMemo(() => ({
     generatedCode: block.props.generatedCode || '',
     prompt: block.props.prompt || '',
-    promptHistory: block.props.promptHistory || [],
+    promptHistory: JSON.parse(block.props.promptHistory || '[]'),
     status: block.props.status || 'empty',
     errorMessage: block.props.errorMessage || '',
   }), [block.props])
@@ -47,7 +47,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
         console.log('📥 Received component update for block:', blockId, event.detail.componentData)
         
         // Build new prompt history
-        const currentHistory = block.props.promptHistory || []
+        const currentHistory = JSON.parse(block.props.promptHistory || '[]')
         const newPrompt = event.detail.componentData.prompt
         const newHistory = newPrompt && !currentHistory.includes(newPrompt) 
           ? [...currentHistory, newPrompt]
@@ -59,7 +59,7 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
             ...block.props,
             generatedCode: event.detail.componentData.generatedCode,
             prompt: event.detail.componentData.prompt,
-            promptHistory: newHistory,
+            promptHistory: JSON.stringify(newHistory),
             status: event.detail.componentData.status,
             errorMessage: event.detail.componentData.errorMessage,
           }
@@ -215,7 +215,7 @@ export const AIComponentSandboxBlock = createReactBlockSpec(
         default: '' as const,
       },
       promptHistory: {
-        default: [] as const, // Array of all prompts used to create this component
+        default: '[]' as const, // JSON array of all prompts used to create this component
       },
       status: {
         default: 'empty' as const, // 'empty', 'generating', 'completed', 'failed'

@@ -12,11 +12,20 @@ import { toast } from 'sonner'
 
 interface Post {
   id: string
-  title: string
-  content: string
-  status: string
   slug: string
-  authorId: string
+  status: string
+  draftContent?: {
+    title: string
+    content: any
+    excerpt?: string
+    featuredImage?: string
+  }
+  publishedContent?: {
+    title: string
+    content: any
+    excerpt?: string
+    featuredImage?: string
+  }
 }
 
 export default function WritePage() {
@@ -61,7 +70,6 @@ export default function WritePage() {
           body: JSON.stringify({
             title: 'Untitled',
             content: '',
-            status: 'DRAFT',
           }),
         })
 
@@ -70,10 +78,7 @@ export default function WritePage() {
         }
 
         const newPost = await response.json()
-        setPost({
-          ...newPost,
-          content: newPost.content || ''
-        })
+        setPost(newPost)
         
         // Redirect to the edit page with the new post ID
         router.replace(`/write/${newPost.id}`)

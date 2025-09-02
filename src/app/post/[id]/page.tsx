@@ -3,12 +3,11 @@ import { PostContent } from './post-content'
 import { Header } from '@/components/layout/header'
 
 interface ArticlePageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
-  // No need to await params anymore as it's not a Promise in App Router
-  const { id } = params
+  const { id } = use(params)
 
   return (
     <div className="min-h-screen bg-gray-50">

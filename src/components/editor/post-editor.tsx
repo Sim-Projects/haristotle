@@ -10,17 +10,27 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { DynamicBlockNoteEditor as BlockNoteEditor } from './dynamic-block-note-editor'
 import { AISandboxHelp } from './ai-sandbox-help'
-import { Save, Eye, Globe, Lock, Clock, User } from 'lucide-react'
+import { Save, Eye, Globe, Lock, Clock, User, Trash2, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 interface PostEditorProps {
   post?: {
     id: string
-    title: string
-    content: string | null
-    status: string
     slug: string
+    status: string
+    draftContent?: {
+      title: string
+      content: any
+      excerpt?: string
+      featuredImage?: string
+    }
+    publishedContent?: {
+      title: string
+      content: any
+      excerpt?: string
+      featuredImage?: string
+    }
   }
   isNew?: boolean
 }
@@ -28,12 +38,16 @@ interface PostEditorProps {
 export function PostEditor({ post, isNew = false }: PostEditorProps) {
   const { data: session } = useSession()
   const router = useRouter()
-  const [title, setTitle] = useState(post?.title || '')
-  const [content, setContent] = useState(post?.content || '')
+  // Get the editing content (draft takes priority, then published, then empty)
+  const editingContent = post?.draftContent || post?.publishedContent
+  const [title, setTitle] = useState(editingContent?.title || '')
+  const [content, setContent] = useState(editingContent?.content || '')
   const [status, setStatus] = useState(post?.status || 'DRAFT')
   const [isSaving, setIsSaving] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [canPublish, setCanPublish] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
   
 
@@ -44,42 +58,42 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
     }
   }, [isNew])
 
-  // Track unsaved changes
+  // Track unsaved changes and publish button state
   useEffect(() => {
-    const initialTitle = post?.title || ''
-    const initialContent = post?.content || ''
+    const initialTitle = editingContent?.title || ''
+    const initialContent = editingContent?.content || ''
     const hasChanges = title !== initialTitle || content !== initialContent
     setHasUnsavedChanges(hasChanges)
-  }, [title, content, post?.title, post?.content])
+
+    // Enable publish button if there are changes compared to published content
+    const publishedTitle = post?.publishedContent?.title || ''
+    const publishedContent = post?.publishedContent?.content || ''
+    const hasDraftOrChanges = post?.draftContent || (title !== publishedTitle || content !== publishedContent)
+    setCanPublish(!!hasDraftOrChanges && title.trim() && content.trim())
+  }, [title, content, editingContent?.title, editingContent?.content, post?.publishedContent, post?.draftContent])
 
   // Auto-save function
   const autoSave = useCallback(async (contentToSave: string, showToast: boolean = false) => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || !post?.id) return
     if (!title.trim() && !contentToSave.trim()) return
 
     setIsSaving(true)
 
     try {
-      const endpoint = `/api/posts/${post?.id}`
-      const method = 'PUT'
-
-      const response = await fetch(endpoint, {
-        method,
+      const response = await fetch(`/api/posts/${post.id}/save-draft`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           title: title || 'Untitled',
           content: contentToSave,
-          status: 'DRAFT',
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save post')
+        throw new Error('Failed to save draft')
       }
-
-      const savedPost = await response.json()
 
       setLastSaved(new Date())
       setHasUnsavedChanges(false)
@@ -139,7 +153,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
   // Publish function
   const handlePublish = useCallback(async () => {
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !post?.id) {
       toast.error('You must be logged in to publish posts')
       return
     }
@@ -155,19 +169,18 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       return
     }
 
-    setIsSaving(true)
+    setIsPublishing(true)
 
     try {
-      const endpoint = `/api/posts/${post?.id}/publish`
-      const response = await fetch(endpoint, {
+      // First save current changes to draft
+      await autoSave(content, false)
+      
+      // Then publish
+      const response = await fetch(`/api/posts/${post.id}/publish`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          title,
-          content,
-        }),
       })
 
       if (!response.ok) {
@@ -176,17 +189,18 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
       const publishedPost = await response.json()
       setStatus('PUBLISHED')
+      setCanPublish(false)
       toast.success('Post published successfully!')
       
       // Navigate to the published post
-      router.push(`/post/${publishedPost.id}`)
+      router.push(`/${post.slug}`)
     } catch (error) {
       console.error('Publish error:', error)
       toast.error('Failed to publish post')
     } finally {
-      setIsSaving(false)
+      setIsPublishing(false)
     }
-  }, [title, content, post?.id, session, router])
+  }, [title, content, post?.id, post?.slug, session, router, autoSave])
 
   // Preview function
   const handlePreview = useCallback(() => {
@@ -196,6 +210,75 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       toast.error('Save the post first to preview')
     }
   }, [post?.id])
+
+  // Discard draft function
+  const handleDiscardDraft = useCallback(async () => {
+    if (!post?.id || !post?.draftContent) return
+
+    if (!confirm('Are you sure you want to discard all draft changes? This cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}/discard-draft`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to discard draft')
+      }
+
+      const result = await response.json()
+      
+      if (result.deleted) {
+        // Whole post was deleted
+        toast.success('Draft discarded and post deleted')
+        router.push('/dashboard')
+      } else {
+        // Draft discarded, revert to published content
+        const publishedContent = post.publishedContent
+        if (publishedContent) {
+          setTitle(publishedContent.title)
+          setContent(publishedContent.content)
+          setHasUnsavedChanges(false)
+          toast.success('Draft discarded, reverted to published version')
+        }
+      }
+    } catch (error) {
+      console.error('Discard draft error:', error)
+      toast.error('Failed to discard draft')
+    }
+  }, [post?.id, post?.draftContent, post?.publishedContent, router])
+
+  // Reset draft to published function
+  const handleResetDraft = useCallback(async () => {
+    if (!post?.id || !post?.publishedContent) return
+
+    if (!confirm('Are you sure you want to reset the draft to match the published content? All current changes will be lost.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/posts/${post.id}/reset-draft`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reset draft')
+      }
+
+      const result = await response.json()
+      
+      // Update UI to show reset content
+      setTitle(result.draftContent.title)
+      setContent(result.draftContent.content)
+      setHasUnsavedChanges(false)
+      toast.success('Draft reset to published content')
+    } catch (error) {
+      console.error('Reset draft error:', error)
+      toast.error('Failed to reset draft')
+    }
+  }, [post?.id, post?.publishedContent])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -272,15 +355,44 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
                 {isSaving ? 'Saving...' : 'Save Draft'}
               </Button>
 
+              {/* Reset Draft Button - only show if there's published content */}
+              {post?.publishedContent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetDraft}
+                  disabled={isSaving}
+                  title="Reset draft to match published content"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset
+                </Button>
+              )}
+
+              {/* Discard Draft Button - only show if there's draft content */}
+              {post?.draftContent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDiscardDraft}
+                  disabled={isSaving}
+                  title="Discard all draft changes"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Discard Draft
+                </Button>
+              )}
+
               <Button
                 onClick={handlePublish}
-                disabled={isSaving || (status === 'PUBLISHED' && !hasUnsavedChanges) || !post?.id}
+                disabled={isPublishing || !canPublish}
                 size="sm"
-                title={!post?.id ? "Save as draft first before publishing" : ""}
+                title={!canPublish ? "No changes to publish" : "Publish current draft"}
               >
                 <Globe className="h-4 w-4 mr-2" />
-                {!post?.id ? 'Publish (save first)' : 
-                 status === 'PUBLISHED' && hasUnsavedChanges ? 'Publish Changes' :
+                {isPublishing ? 'Publishing...' : 
+                 status === 'PUBLISHED' && post?.draftContent ? 'Publish Changes' :
                  status === 'PUBLISHED' ? 'Published' : 'Publish'}
               </Button>
             </div>

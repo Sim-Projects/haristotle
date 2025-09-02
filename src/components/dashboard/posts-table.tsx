@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import {
@@ -47,7 +47,6 @@ import { toast } from 'sonner'
 
 interface Post {
   id: string
-  title: string
   slug: string
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'PRIVATE'
   createdAt: string
@@ -55,6 +54,16 @@ interface Post {
   viewCount: number
   likesCount: number
   publishedAt?: string
+  draftContent?: {
+    title: string
+    content: any
+    updatedAt: string
+  }
+  publishedContent?: {
+    title: string
+    content: any
+    publishedAt: string
+  }
 }
 
 interface Pagination {
@@ -83,9 +92,10 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
   const [deletePost, setDeletePost] = useState<Post | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const filteredPosts = posts.filter(post =>
-    post.title.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredPosts = posts.filter(post => {
+    const title = post.draftContent?.title || post.publishedContent?.title || 'Untitled'
+    return title.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   const handleDelete = async (postId: string) => {
     setIsDeleting(true)
@@ -163,106 +173,203 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Title & Status</TableHead>
               <TableHead>Views</TableHead>
               <TableHead>Likes</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[50px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPosts.map((post) => (
-              <TableRow key={post.id}>
-                <TableCell>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    ...{post.id.slice(-8)}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    {post.status === 'PUBLISHED' ? (
-                      <a 
-                        href={`/post/${post.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {post.title || 'Untitled'}
-                      </a>
-                    ) : (
-                      <a 
-                        href={`/write/${post.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {post.title || 'Untitled'}
-                      </a>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant="secondary" 
-                    className={cn('text-xs', statusColors[post.status])}
-                  >
-                    {post.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>{post.viewCount}</TableCell>
-                <TableCell>{post.likesCount}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDistanceToNow(new Date(post.updatedAt), { addSuffix: true })}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/write/${post.id}`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      {post.status === 'PUBLISHED' && (
-                        <DropdownMenuItem asChild>
-                          <Link href={`/post/${post.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
+            {filteredPosts.map((post) => {
+              const hasPublished = !!post.publishedContent
+              const hasDraft = !!post.draftContent
+              const displayTitle = post.draftContent?.title || post.publishedContent?.title || 'Untitled'
+              
+              return (
+                <React.Fragment key={post.id}>
+                  {/* Published Version Row */}
+                  {hasPublished && (
+                    <TableRow className="border-b-0">
+                      <TableCell rowSpan={hasPublished && hasDraft ? 2 : 1}>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          ...{post.id.slice(-8)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <a 
+                            href={`/${post.slug}`}
+                            className="font-medium hover:underline"
+                          >
+                            {post.publishedContent?.title || post.draftContent?.title || 'Untitled'}
+                          </a>
+                          <Badge 
+                            variant="secondary" 
+                            className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 text-xs"
+                          >
+                            Published
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Published {formatDistanceToNow(new Date(post.publishedContent?.publishedAt || post.publishedAt || new Date()), { addSuffix: true })}
+                        </div>
+                      </TableCell>
+                      <TableCell rowSpan={hasPublished && hasDraft ? 2 : 1}>
+                        {post.viewCount}
+                      </TableCell>
+                      <TableCell rowSpan={hasPublished && hasDraft ? 2 : 1}>
+                        {post.likesCount}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/${post.slug}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Published
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/write/${post.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  
+                  {/* Draft Version Row */}
+                  {hasDraft && (
+                    <TableRow className={hasPublished ? "border-t-0 bg-gray-50/50" : ""}>
+                      {!hasPublished && (
+                        <TableCell>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            ...{post.id.slice(-8)}
+                          </span>
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <a 
+                            href={`/write/${post.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {post.draftContent?.title || 'Untitled'}
+                          </a>
+                          <Badge 
+                            variant="secondary" 
+                            className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300 text-xs"
+                          >
+                            Draft
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center space-x-4">
+                          <span>Modified {formatDistanceToNow(new Date(post.draftContent?.updatedAt || post.updatedAt), { addSuffix: true })}</span>
+                          <Button
+                            variant="link" 
+                            size="sm"
+                            className="h-auto p-0 text-red-600 hover:text-red-700"
+                            onClick={async () => {
+                              if (confirm('Discard draft changes?')) {
+                                try {
+                                  await fetch(`/api/posts/${post.id}/discard-draft`, { method: 'DELETE' })
+                                  toast.success('Draft discarded')
+                                  onUpdate()
+                                } catch {
+                                  toast.error('Failed to discard draft')
+                                }
+                              }
+                            }}
+                          >
+                            Discard Draft
+                          </Button>
+                        </div>
+                      </TableCell>
+                      {!hasPublished && (
+                        <>
+                          <TableCell>{post.viewCount}</TableCell>
+                          <TableCell>{post.likesCount}</TableCell>
+                        </>
+                      )}
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/write/${post.id}`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Draft
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/preview/${post.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Preview Draft
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={async () => {
+                                try {
+                                  await fetch(`/api/posts/${post.id}/publish`, { method: 'POST' })
+                                  toast.success('Post published!')
+                                  onUpdate()
+                                } catch {
+                                  toast.error('Failed to publish')
+                                }
+                              }}
+                            >
+                              <Globe className="mr-2 h-4 w-4" />
+                              Publish
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {/* Empty state - no content */}
+                  {!hasPublished && !hasDraft && (
+                    <TableRow>
+                      <TableCell>
+                        <span className="text-xs font-mono text-muted-foreground">
+                          ...{post.id.slice(-8)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-muted-foreground">Untitled</span>
+                          <Badge variant="secondary" className="text-xs">
+                            Empty
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>{post.viewCount}</TableCell>
+                      <TableCell>{post.likesCount}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/write/${post.id}`}>
+                            <Edit className="h-4 w-4" />
                           </Link>
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      {post.status === 'DRAFT' && (
-                        <DropdownMenuItem
-                          onClick={() => handleStatusChange(post.id, 'PUBLISHED')}
-                        >
-                          <Globe className="mr-2 h-4 w-4" />
-                          Publish
-                        </DropdownMenuItem>
-                      )}
-                      {post.status === 'PUBLISHED' && (
-                        <DropdownMenuItem
-                          onClick={() => handleStatusChange(post.id, 'ARCHIVED')}
-                        >
-                          <Archive className="mr-2 h-4 w-4" />
-                          Archive
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => setDeletePost(post)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              )
+            })}
           </TableBody>
         </Table>
       </div>
@@ -335,7 +442,7 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Post</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deletePost?.title}"? This action cannot be undone.
+              Are you sure you want to delete "{deletePost?.draftContent?.title || deletePost?.publishedContent?.title || 'Untitled'}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

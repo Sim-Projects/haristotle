@@ -78,10 +78,14 @@ export async function GET(request: Request) {
         where,
         select: {
           id: true,
-          title: true,
           slug: true,
-          excerpt: true,
-          featuredImage: true,
+          publishedContent: {
+            select: {
+              title: true,
+              excerpt: true,
+              featuredImage: true,
+            },
+          },
           publishedAt: true,
           createdAt: true,
           readingTime: true,

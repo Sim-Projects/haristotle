@@ -101,11 +101,15 @@ export async function GET() {
       },
       select: {
         id: true,
-        title: true,
         slug: true,
         viewCount: true,
         likesCount: true,
         publishedAt: true,
+        publishedContent: {
+          select: {
+            title: true,
+          },
+        },
       },
       orderBy: {
         viewCount: 'desc',
@@ -122,7 +126,14 @@ export async function GET() {
       likes: totalLikes._sum.likesCount || 0,
       comments: totalComments._sum.commentsCount || 0,
       recentPosts: recentStats,
-      topPosts,
+      topPosts: topPosts.map(post => ({
+        id: post.id,
+        slug: post.slug,
+        viewCount: post.viewCount,
+        likesCount: post.likesCount,
+        publishedAt: post.publishedAt,
+        title: post.publishedContent?.title || 'Untitled',
+      })),
     }
 
     return NextResponse.json(stats)

@@ -45,13 +45,17 @@ export async function GET(request: Request) {
       },
       select: {
         id: true,
-        title: true,
         slug: true,
         viewCount: true,
         likesCount: true,
         commentsCount: true,
         publishedAt: true,
         readingTime: true,
+        publishedContent: {
+          select: {
+            title: true,
+          },
+        },
       },
     })
 
@@ -102,19 +106,19 @@ export async function GET(request: Request) {
     const recentActivity = [
       {
         type: 'view' as const,
-        postTitle: topPosts[0]?.title || 'Sample Post',
+        postTitle: topPosts[0]?.publishedContent?.title || 'Sample Post',
         count: 25,
         date: new Date().toISOString(),
       },
       {
         type: 'like' as const,
-        postTitle: topPosts[1]?.title || 'Another Post',
+        postTitle: topPosts[1]?.publishedContent?.title || 'Another Post',
         count: 5,
         date: subDays(now, 1).toISOString(),
       },
       {
         type: 'comment' as const,
-        postTitle: topPosts[2]?.title || 'Third Post',
+        postTitle: topPosts[2]?.publishedContent?.title || 'Third Post',
         count: 2,
         date: subDays(now, 2).toISOString(),
       },

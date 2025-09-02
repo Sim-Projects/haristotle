@@ -93,11 +93,7 @@ model User {
 // Content Models
 model Post {
   id             String      @id @default(cuid())
-  title          String
   slug           String      @unique
-  content        Json        // BlockNote content as JSON
-  excerpt        String?
-  featuredImage  String?     @map("featured_image")
   status         PostStatus  @default(DRAFT)
   publishedAt    DateTime?   @map("published_at")
   readingTime    Int?        @map("reading_time") // in minutes
@@ -112,10 +108,9 @@ model Post {
   authorId String @map("author_id")
   author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  // Versioning relation (for draft versions of published posts)
-  parentPostId String? @map("parent_post_id")
-  parentPost   Post?   @relation("PostVersions", fields: [parentPostId], references: [id])
-  versions     Post[]  @relation("PostVersions")
+  // Content relations
+  draftContent     DraftContent?
+  publishedContent PublishedContent?
 
   // Category and tag relations
   categories CategoryOnPost[]
@@ -131,6 +126,38 @@ model Post {
   aiComponents AIComponent[]
 
   @@map("posts")
+}
+
+// Draft content - always editable
+model DraftContent {
+  id            String   @id @default(cuid())
+  postId        String   @unique @map("post_id")
+  title         String
+  content       Json     // BlockNote content as JSON
+  excerpt       String?
+  featuredImage String?  @map("featured_image")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("draft_contents")
+}
+
+// Published content - read-only (updated only during publish)
+model PublishedContent {
+  id            String   @id @default(cuid())
+  postId        String   @unique @map("post_id")
+  title         String
+  content       Json     // BlockNote content as JSON
+  excerpt       String?
+  featuredImage String?  @map("featured_image")
+  publishedAt   DateTime @default(now()) @map("published_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("published_contents")
 }
 
 enum PostStatus {

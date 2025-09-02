@@ -10,16 +10,25 @@ import { AIComponentPopup } from '@/components/editor/ai-component-popup'
 import { useAIComponentPopup } from '@/hooks/use-ai-component-popup'
 
 interface WritePageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 interface Post {
   id: string
-  title: string
-  content: string
-  status: string
   slug: string
-  authorId: string
+  status: string
+  draftContent?: {
+    title: string
+    content: any
+    excerpt?: string
+    featuredImage?: string
+  }
+  publishedContent?: {
+    title: string
+    content: any
+    excerpt?: string
+    featuredImage?: string
+  }
 }
 
 export default function EditPostPage({ params }: WritePageProps) {
@@ -54,8 +63,8 @@ export default function EditPostPage({ params }: WritePageProps) {
   useEffect(() => {
     async function fetchPost() {
       try {
-        const { id } = params
-        const response = await fetch(`/api/posts/${id}`)
+        const { id } = await params
+        const response = await fetch(`/api/posts/${id}/edit`)
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -66,17 +75,7 @@ export default function EditPostPage({ params }: WritePageProps) {
         }
 
         const postData = await response.json()
-        
-        // Check if user owns the post
-        if (session?.user?.id && postData.authorId !== session.user.id) {
-          router.push('/')
-          return
-        }
-
-        setPost({
-          ...postData,
-          content: typeof postData.content === 'string' ? postData.content : JSON.stringify(postData.content)
-        })
+        setPost(postData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {

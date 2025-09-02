@@ -6,14 +6,14 @@ import { updatePostSchema } from '@/lib/validations/post'
 import { generateUniqueSlug, calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
 
 interface RouteContext {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function GET(
   request: NextRequest,
   context: RouteContext
 ) {
-  const { params } = context
+  const params = await context.params
   try {
     const post = await prisma.post.findUnique({
       where: { id: params.id },
@@ -66,11 +66,12 @@ export async function GET(
   }
 }
 
+/* DEPRECATED - Use new draft/publish endpoints instead
 export async function PUT(
   request: NextRequest,
   context: RouteContext
 ) {
-  const { params } = context
+  const params = await context.params
   try {
     const session = await getServerSession(authOptions)
 
@@ -84,15 +85,9 @@ export async function PUT(
     // Check if post exists and user owns it
     const existingPost = await prisma.post.findUnique({
       where: { id: params.id },
-      select: { 
-        authorId: true, 
-        slug: true, 
-        status: true,
-        title: true,
-        content: true,
-        excerpt: true,
-        featuredImage: true,
-        parentPostId: true,
+      include: { 
+        draftContent: true,
+        publishedContent: true,
       },
     })
 
@@ -425,11 +420,14 @@ export async function PUT(
   }
 }
 
+*/
+
+/* DEPRECATED - Use dashboard delete instead
 export async function DELETE(
   request: NextRequest,
   context: RouteContext
 ) {
-  const { params } = context
+  const params = await context.params
   try {
     const session = await getServerSession(authOptions)
 
@@ -476,3 +474,4 @@ export async function DELETE(
     )
   }
 }
+*/

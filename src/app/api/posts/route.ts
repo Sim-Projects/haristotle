@@ -43,8 +43,22 @@ export async function GET(request: NextRequest) {
     }
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { excerpt: { contains: search, mode: 'insensitive' } }
+        { 
+          publishedContent: {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { excerpt: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        },
+        { 
+          draftContent: {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { excerpt: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        }
       ]
     }
 
@@ -61,6 +75,8 @@ export async function GET(request: NextRequest) {
               bio: true,
             },
           },
+          draftContent: true,
+          publishedContent: true,
           categories: {
             include: {
               category: true,
@@ -159,66 +175,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the post with retry logic for unique constraint violations
-    let post
-    let attempts = 0
-    const maxAttempts = 3
-    
-    while (attempts < maxAttempts) {
-      try {
-        console.log(`Attempting to create post with slug: ${slug} (attempt ${attempts + 1})`)
-        
-        post = await prisma.post.create({
-          data: {
-            title: validatedData.title,
-            slug,
-            content: validatedData.content,
-            excerpt,
-            featuredImage: validatedData.featuredImage,
-            status: validatedData.status,
-            readingTime,
-            authorId: session.user.id,
-          },
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                image: true,
-              },
-            },
-          },
-        })
-        break // Success, exit the retry loop
-      } catch (error: any) {
-        attempts++
-        console.log(`Post creation attempt ${attempts} failed:`, error.code)
-        
-        if (error.code === 'P2002' && attempts < maxAttempts) {
-          // Unique constraint violation - regenerate slug and retry
-          console.log('Unique constraint violation, regenerating slug...')
-          const newSlug = await generateUniqueSlug(
-            `${baseSlug}-${Date.now()}`, // Add timestamp for uniqueness
-            async (slug: string) => {
-              const existing = await prisma.post.findUnique({
-                where: { slug },
-              })
-              return !!existing
-            }
-          )
-          slug = newSlug
-          console.log('New slug generated:', slug)
-        } else {
-          // Different error or max attempts reached, re-throw
-          throw error
-        }
-      }
-    }
+    // Create the post with draft content using transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the main post record
+      const post = await tx.post.create({
+        data: {
+          slug,
+          status: 'DRAFT', // Always start as draft
+          readingTime,
+          authorId: session.user.id,
+        },
+      })
 
-    if (!post) {
-      throw new Error('Failed to create post after maximum attempts')
-    }
+      // Create draft content
+      await tx.draftContent.create({
+        data: {
+          postId: post.id,
+          title: validatedData.title,
+          content: validatedData.content,
+          excerpt,
+          featuredImage: validatedData.featuredImage,
+        },
+      })
+
+      return post
+    })
+
+    const post = result
 
     // Handle categories and tags if provided
     if (validatedData.categoryIds.length > 0) {
