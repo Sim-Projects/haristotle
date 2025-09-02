@@ -105,8 +105,20 @@ export async function GET(request: NextRequest) {
       prisma.post.count({ where })
     ])
 
+    // Transform posts to include content fields for backward compatibility
+    const transformedPosts = posts.map(post => {
+      const content = post.publishedContent || post.draftContent
+      return {
+        ...post,
+        title: content?.title || 'Untitled',
+        excerpt: content?.excerpt || null,
+        featuredImage: content?.featuredImage || null,
+        content: content?.content || '',
+      }
+    })
+
     return NextResponse.json({
-      posts,
+      posts: transformedPosts,
       pagination: {
         page,
         limit,
@@ -139,24 +151,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createPostSchema.parse(body)
 
-    // Generate unique slug from title with timestamp to reduce collisions
-    const baseSlug = validatedData.title || 'untitled'
-    console.log('Generating slug for base:', baseSlug)
-    
-    let slug = await generateUniqueSlug(
-      baseSlug,
-      async (slug: string) => {
-        console.log('Checking if slug exists:', slug)
-        const existing = await prisma.post.findUnique({
-          where: { slug },
-        })
-        const exists = !!existing
-        console.log('Slug exists:', exists)
-        return exists
-      }
-    )
-    
-    console.log('Initial generated slug:', slug)
 
     // Calculate reading time and extract excerpt
     const readingTime = calculateReadingTime(validatedData.content)
@@ -180,7 +174,6 @@ export async function POST(request: NextRequest) {
       // Create the main post record
       const post = await tx.post.create({
         data: {
-          slug,
           status: 'DRAFT', // Always start as draft
           readingTime,
           authorId: session.user.id,

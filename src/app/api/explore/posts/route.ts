@@ -78,7 +78,6 @@ export async function GET(request: Request) {
         where,
         select: {
           id: true,
-          slug: true,
           publishedContent: {
             select: {
               title: true,
@@ -139,8 +138,16 @@ export async function GET(request: Request) {
       prisma.post.count({ where }),
     ])
 
+    // Transform posts to include content fields for backward compatibility
+    const transformedPosts = posts.map(post => ({
+      ...post,
+      title: post.publishedContent?.title || 'Untitled',
+      excerpt: post.publishedContent?.excerpt || null,
+      featuredImage: post.publishedContent?.featuredImage || null,
+    }))
+
     return NextResponse.json({
-      posts,
+      posts: transformedPosts,
       pagination: {
         page,
         limit,

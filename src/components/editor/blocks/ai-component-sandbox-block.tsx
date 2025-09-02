@@ -113,10 +113,10 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
   
   // Component with generated content
   return (
-    <div className="w-full">
+    <div className={`w-full ${isEditable ? 'border rounded-lg' : ''}`}>
       {/* Component header - only show in edit mode */}
       {isEditable && (
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border-b mb-3">
+        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-t-lg border-b">
           <div className="flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium text-gray-700">AI Generated Component</span>
@@ -148,29 +148,29 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
       )}
       
       {/* Component content */}
-      <Card className={isEditable ? "border border-t-0 rounded-t-none" : "border"}>
-        <CardContent className="p-6">
-          {componentData.status === 'completed' ? (
-            <SafeReactComponentRuntime
-              code={componentData.generatedCode}
-              onError={(error) => {
-                toast.error(`Component error: ${error}`)
-              }}
-            />
-          ) : componentData.status === 'generating' ? (
-            <div className="min-h-[150px] flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">{isEditable ? 'Generating component...' : 'Loading...'}</p>
+      {isEditable ? (
+        <Card className="border-0 rounded-t-none shadow-none">
+          <CardContent className="p-6">
+            {componentData.status === 'completed' ? (
+              <SafeReactComponentRuntime
+                code={componentData.generatedCode}
+                onError={(error) => {
+                  toast.error(`Component error: ${error}`)
+                }}
+              />
+            ) : componentData.status === 'generating' ? (
+              <div className="min-h-[150px] flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Generating component...</p>
+                </div>
               </div>
-            </div>
-          ) : componentData.status === 'failed' ? (
-            <div className="min-h-[150px] flex items-center justify-center">
-              <div className="text-center">
-                <Code className="w-12 h-12 text-red-300 mx-auto mb-4" />
-                <p className="text-red-600 font-medium">Generation failed</p>
-                <p className="text-gray-500 text-sm">{componentData.errorMessage}</p>
-                {isEditable && (
+            ) : componentData.status === 'failed' ? (
+              <div className="min-h-[150px] flex items-center justify-center">
+                <div className="text-center">
+                  <Code className="w-12 h-12 text-red-300 mx-auto mb-4" />
+                  <p className="text-red-600 font-medium">Generation failed</p>
+                  <p className="text-gray-500 text-sm">{componentData.errorMessage}</p>
                   <Button
                     onClick={handleOpenPopup}
                     variant="outline"
@@ -179,12 +179,38 @@ function AIComponentSandboxComponent({ block, editor }: AIComponentSandboxProps)
                   >
                     Try again
                   </Button>
-                )}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : (
+        // View mode - minimal wrapper without borders
+        <div className="w-full">
+          {componentData.status === 'completed' ? (
+            <SafeReactComponentRuntime
+              code={componentData.generatedCode}
+              onError={(error) => {
+                console.error('Component error in view mode:', error)
+              }}
+            />
+          ) : componentData.status === 'generating' ? (
+            <div className="min-h-[150px] flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </div>
+          ) : componentData.status === 'failed' ? (
+            <div className="min-h-[150px] flex items-center justify-center text-center">
+              <div>
+                <Code className="w-12 h-12 text-red-300 mx-auto mb-4" />
+                <p className="text-red-600 font-medium">Component unavailable</p>
               </div>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      )}
       
       {/* Component prompt/description - only show in edit mode */}
       {isEditable && componentData.promptHistory.length > 0 && (

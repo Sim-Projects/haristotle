@@ -198,7 +198,7 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <a 
-                            href={`/${post.slug}`}
+                            href={`/post/${post.id}`}
                             className="font-medium hover:underline"
                           >
                             {post.publishedContent?.title || post.draftContent?.title || 'Untitled'}
@@ -229,16 +229,16 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/${post.slug}`}>
+                              <Link href={`/post/${post.id}`}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Published
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/write/${post.id}`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </Link>
+                            <DropdownMenuItem 
+                              onClick={() => window.location.href = `/write/${post.id}`}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -307,17 +307,15 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/write/${post.id}`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Draft
-                              </Link>
+                            <DropdownMenuItem 
+                              onClick={() => window.location.href = `/write/${post.id}`}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Draft
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/preview/${post.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview Draft
-                              </Link>
+                            <DropdownMenuItem disabled>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Preview Draft
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -359,10 +357,12 @@ export function PostsTable({ posts, onUpdate, pagination, onPageChange }: PostsT
                       <TableCell>{post.viewCount}</TableCell>
                       <TableCell>{post.likesCount}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/write/${post.id}`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => window.location.href = `/write/${post.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>

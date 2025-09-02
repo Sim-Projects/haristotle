@@ -101,7 +101,6 @@ export async function GET() {
       },
       select: {
         id: true,
-        slug: true,
         viewCount: true,
         likesCount: true,
         publishedAt: true,
@@ -128,7 +127,6 @@ export async function GET() {
       recentPosts: recentStats,
       topPosts: topPosts.map(post => ({
         id: post.id,
-        slug: post.slug,
         viewCount: post.viewCount,
         likesCount: post.likesCount,
         publishedAt: post.publishedAt,

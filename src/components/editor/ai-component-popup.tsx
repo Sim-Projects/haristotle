@@ -20,7 +20,9 @@ import {
   ArrowRight,
   Check,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Split,
+  Layers
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -55,6 +57,7 @@ export function AIComponentPopup({
   const [newComponentData, setNewComponentData] = useState<AIComponentData | null>(null)
   const [showComparison, setShowComparison] = useState(false)
   const [currentGeneratingWord, setCurrentGeneratingWord] = useState('cooking')
+  const [comparisonMode, setComparisonMode] = useState<'horizontal' | 'vertical'>('horizontal')
 
   // Fetch available models on component mount
   useEffect(() => {
@@ -83,19 +86,35 @@ export function AIComponentPopup({
   }, [])
 
   const generatingWords = [
-    'cooking', 'storyboarding', 'diving', 'crafting', 'brewing', 'sculpting',
-    'weaving', 'painting', 'composing', 'designing', 'building', 'creating',
-    'forging', 'molding', 'dreaming', 'imagining', 'conjuring', 'spinning',
-    'orchestrating', 'architecting', 'inventing', 'sketching', 'mapping', 'drafting',
-    'plotting', 'animating', 'envisioning', 'modeling', 'rendering', 'simulating',
-    'refining', 'exploring', 'generating', 'synthesizing', 'curating', 'editing',
-    'shaping', 'assembling', 'programming', 'coding', 'prototyping', 'testing',
-    'debugging', 'optimizing', 'refactoring', 'enriching', 'expanding',
-    'reimagining', 'revising', 'reworking', 'rebuilding', 'reconstructing',
+    // Normal dev words
+    'architecting', 'programming', 'coding', 'debugging', 'refactoring', 'optimizing',
+    'testing', 'building', 'designing', 'modeling', 'rendering', 'generating',
+    'compiling', 'bundling', 'transpiling', 'minifying', 'parsing',
+    
+    // Programmer culture & memes
+    'rubber-ducking', 'stack-overflowing', 'yak-shaving', 'bikeshedding', 'cargo-culting',
+    'code-golfing', 'spaghetti-coding', 'premature-optimizing', 'over-engineering', 
+    'feature-creeping', 'scope-creeping', 'monkey-patching', 'impostor-syndroming',
+    'tutorial-hell-ing', 'tab-vs-space-arguing', 'vim-vs-emacs-debating', 
+    'works-on-my-machining', 'it-was-working-yesterdaying', 'legacy-code-crying',
+    'production-panicking', 'caffeine-overdosing', 'weekend-coding', 
+    'side-project-abandoning', 'documentation-avoiding', 'comment-procrastinating',
+    'git-blame-investigating', 'stackoverflow-copy-pasting', 'regex-googling',
+    'merge-conflicting', 'git-committing', 'npm-installing', 'cache-busting',
+    'hot-reloading', 'dependency-injecting', 'unit-testing', 'pair-programming',
+    'code-reviewing', 'linting', 'type-checking', 'console-logging',
+    
+    // Fun silly words (keeping some favorites)
     'gigglecoding', 'snackifying', 'quackitecting', 'bananifying', 'jellyfying',
     'wobblifying', 'doodling', 'snoozling', 'bamboozling', 'whimsifying', 'fluffing',
     'zombifying', 'splatting', 'blorpifying', 'squigglizing', 'memeifying', 'derping',
-    'honkifying', 'booping', 'glitching', 'froggling', 'sporking', 'noodling'
+    'honkifying', 'booping', 'glitching', 'froggling', 'sporking', 'noodling',
+    
+    // More programmer silliness
+    'procrastinating', 'overthinking', 'googling', 'refactoring-again', 'breaking-prod',
+    'fixing-bugs', 'creating-bugs', 'commenting-out', 'console-log-debugging',
+    'naming-things', 'cache-invalidating', 'off-by-one-erroring', 'null-pointer-excepting',
+    'memory-leaking', 'infinite-looping', 'race-conditioning', 'deadlocking'
   ]
 
   // Cycle through generating words when isGenerating is true
@@ -104,9 +123,11 @@ export function AIComponentPopup({
 
     const interval = setInterval(() => {
       setCurrentGeneratingWord(prev => {
-        const currentIndex = generatingWords.indexOf(prev)
-        const nextIndex = (currentIndex + 1) % generatingWords.length
-        return generatingWords[nextIndex]
+        let nextWord
+        do {
+          nextWord = generatingWords[Math.floor(Math.random() * generatingWords.length)]
+        } while (nextWord === prev && generatingWords.length > 1) // Avoid repeating the same word
+        return nextWord
       })
     }, 1500)
 
@@ -177,26 +198,11 @@ export function AIComponentPopup({
       if (result.componentData) {
         setNewComponentData(result.componentData)
         
-        // Check if this is the first generation
-        const isFirstGeneration = !currentComponentData || currentComponentData.status === 'empty'
+        // Always show comparison screen (even for first generation)
+        setShowComparison(true)
         
-        // Show comparison if there's existing content
-        if (currentComponentData && currentComponentData.status !== 'empty') {
-          setShowComparison(true)
-        } else {
-          // No existing content, can apply directly
-          setShowComparison(false)
-        }
-        
-        // Auto-apply if this is the first generation
-        if (isFirstGeneration && result.componentData.status === 'completed') {
-          console.log('🚀 Auto-applying first generation component', result.componentData)
-          onApply(result.componentData, true) // true = close popup after apply
-          toast.success('Component generated and applied automatically!')
-        } else {
-          console.log('🔄 Component generated, waiting for manual apply', result.componentData)
-          toast.success('Component generated successfully!')
-        }
+        console.log('🔄 Component generated, waiting for manual apply', result.componentData)
+        toast.success('Component generated successfully!')
       } else {
         toast.error('Invalid response from API')
       }
@@ -216,7 +222,7 @@ export function AIComponentPopup({
 
   const handleAccept = useCallback(() => {
     if (newComponentData) {
-      onApply(newComponentData, false) // false = don't close popup for manual apply
+      onApply(newComponentData, true) // true = close popup after manual apply
       toast.success('Component applied successfully!')
     }
   }, [newComponentData, onApply])
@@ -299,7 +305,7 @@ export function AIComponentPopup({
                                 height={16} 
                                 className="flex-shrink-0"
                               />
-                              <div className="flex flex-col">
+                              <div className="flex flex-col text-left">
                                 <span className="font-medium">{model.label}</span>
                                 <span className="text-xs text-gray-500">{model.description}</span>
                               </div>
@@ -324,20 +330,46 @@ export function AIComponentPopup({
                     />
                   </div>
 
-                  {currentComponentData && currentComponentData.status !== 'empty' && (
+                  {currentComponentData && currentComponentData.promptHistory && currentComponentData.promptHistory.length > 0 && (
                     <div>
                       <Label className="block text-sm font-medium text-gray-700 mb-2">
-                        Current Status
+                        Prompt History ({currentComponentData.promptHistory.length})
                       </Label>
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant="secondary">
-                            {currentComponentData.status === 'completed' ? 'Ready' : 'Draft'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          <strong>Current prompt:</strong> {currentComponentData.prompt}
-                        </p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {currentComponentData.promptHistory
+                          .slice()
+                          .reverse()
+                          .map((historyPrompt: string, index: number) => {
+                            const displayNumber = currentComponentData.promptHistory!.length - index;
+                            const isCurrent = historyPrompt === currentComponentData.prompt;
+                            return (
+                              <div
+                                key={index}
+                                className={`p-3 rounded-lg border text-sm ${
+                                  isCurrent 
+                                    ? 'bg-green-50 border-green-200 ring-1 ring-green-300' 
+                                    : 'bg-gray-50 border-gray-200'
+                                }`}
+                              >
+                                <div className="flex items-start space-x-2">
+                                  <Badge 
+                                    variant={isCurrent ? "default" : "outline"} 
+                                    className="text-xs font-mono min-w-[2rem] justify-center"
+                                  >
+                                    #{displayNumber}
+                                  </Badge>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-gray-700 ${isCurrent ? 'font-medium' : ''}`}>
+                                      {historyPrompt}
+                                    </p>
+                                    {isCurrent && (
+                                      <p className="text-xs text-green-600 mt-1">← Current</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
@@ -381,7 +413,7 @@ export function AIComponentPopup({
                       </div>
                       <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                         <span className="animate-pulse text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600 font-bold">
-                          {currentGeneratingWord}...
+                          {currentGeneratingWord}
                         </span>
                       </h3>
                       <p className="text-gray-600">Creating your AI component</p>
@@ -447,75 +479,174 @@ export function AIComponentPopup({
             <div className="flex-1 flex flex-col">
               {/* Comparison Header */}
               <div className="p-6 border-b bg-amber-50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
-                    <AlertCircle className="h-4 w-4 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                      <AlertCircle className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-amber-900">Review Changes</h3>
+                      <p className="text-sm text-amber-700">
+                        Compare the new component with your existing one. 
+                        <strong className="ml-1">Accepting will replace the current component permanently.</strong>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-amber-900">Review Changes</h3>
-                    <p className="text-sm text-amber-700">
-                      Compare the new component with your existing one. 
-                      <strong className="ml-1">Accepting will replace the current component permanently.</strong>
-                    </p>
+                  <div className="flex items-center space-x-2">
+                    <Label className="text-sm font-medium text-amber-900">Layout:</Label>
+                    <div className="flex bg-white rounded-lg p-1 border border-amber-200">
+                      <Button
+                        size="sm"
+                        variant={comparisonMode === 'horizontal' ? 'default' : 'ghost'}
+                        onClick={() => setComparisonMode('horizontal')}
+                        className="h-8 px-3"
+                        title="Side by side comparison"
+                      >
+                        <Split className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={comparisonMode === 'vertical' ? 'default' : 'ghost'}
+                        onClick={() => setComparisonMode('vertical')}
+                        className="h-8 px-3"
+                        title="Stacked comparison"
+                      >
+                        <Layers className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Side by Side Comparison */}
-              <div className="flex-1 flex overflow-hidden">
-                {/* Current Component */}
-                <div className="flex-1 border-r flex flex-col">
-                  <div className="p-4 bg-red-50 border-b">
-                    <h4 className="font-medium text-red-900 flex items-center">
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Current Component (will be lost)
-                    </h4>
-                    <p className="text-sm text-red-700 mt-1">
-                      Prompt: {currentComponentData?.prompt}
-                    </p>
-                  </div>
-                  <div className="flex-1 p-6 overflow-auto">
-                    {currentComponentData && currentComponentData.status === 'completed' ? (
-                      <SafeReactComponentRuntime
-                        code={currentComponentData.generatedCode}
-                        onError={(error) => {
-                          console.error(`Current component error: ${error}`)
-                        }}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-500">No current component</p>
+              {/* Comparison Layout */}
+              <div className={`flex-1 ${comparisonMode === 'horizontal' ? 'flex overflow-hidden' : 'flex flex-col overflow-y-auto'}`}>
+                {comparisonMode === 'horizontal' ? (
+                  /* Horizontal Layout - Side by Side */
+                  <>
+                    {/* Current Component */}
+                    <div className="flex-1 border-r flex flex-col">
+                      <div className="p-4 bg-red-50 border-b">
+                        <h4 className="font-medium text-red-900 flex items-center">
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          {currentComponentData && currentComponentData.status !== 'empty' ? 'Current Component (will be lost)' : 'No Existing Component'}
+                        </h4>
+                        {currentComponentData && currentComponentData.status !== 'empty' && (
+                          <p className="text-sm text-red-700 mt-1">
+                            Prompt: {currentComponentData.prompt}
+                          </p>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+                      <div className="flex-1 p-6 overflow-auto">
+                        {currentComponentData && currentComponentData.status === 'completed' ? (
+                          <SafeReactComponentRuntime
+                            code={currentComponentData.generatedCode}
+                            onError={(error) => {
+                              console.error(`Current component error: ${error}`)
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <Code className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                              <p className="text-gray-500 text-lg">No existing component</p>
+                              <p className="text-sm text-gray-400">This will be your first component</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                {/* New Component */}
-                <div className="flex-1 flex flex-col">
-                  <div className="p-4 bg-green-50 border-b">
-                    <h4 className="font-medium text-green-900 flex items-center">
-                      <ChevronRight className="h-4 w-4 mr-2" />
-                      New Component (will be applied)
-                    </h4>
-                    <p className="text-sm text-green-700 mt-1">
-                      Prompt: {newComponentData?.prompt}
-                    </p>
-                  </div>
-                  <div className="flex-1 p-6 overflow-auto">
-                    {newComponentData && newComponentData.status === 'completed' ? (
-                      <SafeReactComponentRuntime
-                        code={newComponentData.generatedCode}
-                        onError={(error) => {
-                          console.error(`New component error: ${error}`)
-                        }}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <p className="text-gray-500">No new component</p>
+                    {/* New Component */}
+                    <div className="flex-1 flex flex-col">
+                      <div className="p-4 bg-green-50 border-b">
+                        <h4 className="font-medium text-green-900 flex items-center">
+                          <ChevronRight className="h-4 w-4 mr-2" />
+                          New Component (will be applied)
+                        </h4>
+                        <p className="text-sm text-green-700 mt-1">
+                          Prompt: {newComponentData?.prompt}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </div>
+                      <div className="flex-1 p-6 overflow-auto">
+                        {newComponentData && newComponentData.status === 'completed' ? (
+                          <SafeReactComponentRuntime
+                            code={newComponentData.generatedCode}
+                            onError={(error) => {
+                              console.error(`New component error: ${error}`)
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-gray-500">No new component</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  /* Vertical Layout - Stacked, Old First */
+                  <>
+                    {/* Current Component - Top */}
+                    <div className="flex-shrink-0 flex flex-col border-b min-h-[300px]">
+                      <div className="p-4 bg-red-50 border-b">
+                        <h4 className="font-medium text-red-900 flex items-center">
+                          <Code className="h-4 w-4 mr-2" />
+                          {currentComponentData && currentComponentData.status !== 'empty' ? 'Current Component (will be lost)' : 'No Existing Component'}
+                        </h4>
+                        {currentComponentData && currentComponentData.status !== 'empty' && (
+                          <p className="text-sm text-red-700 mt-1">
+                            Prompt: {currentComponentData.prompt}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex-1 p-6 overflow-auto min-h-[240px]">
+                        {currentComponentData && currentComponentData.status === 'completed' ? (
+                          <SafeReactComponentRuntime
+                            code={currentComponentData.generatedCode}
+                            onError={(error) => {
+                              console.error(`Current component error: ${error}`)
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <Code className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                              <p className="text-gray-500 text-lg">No existing component</p>
+                              <p className="text-sm text-gray-400">This will be your first component</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* New Component - Bottom */}
+                    <div className="flex-shrink-0 flex flex-col min-h-[300px]">
+                      <div className="p-4 bg-green-50 border-b">
+                        <h4 className="font-medium text-green-900 flex items-center">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          New Component (will be applied)
+                        </h4>
+                        <p className="text-sm text-green-700 mt-1">
+                          Prompt: {newComponentData?.prompt}
+                        </p>
+                      </div>
+                      <div className="flex-1 p-6 overflow-auto min-h-[240px]">
+                        {newComponentData && newComponentData.status === 'completed' ? (
+                          <SafeReactComponentRuntime
+                            code={newComponentData.generatedCode}
+                            onError={(error) => {
+                              console.error(`New component error: ${error}`)
+                            }}
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <p className="text-gray-500">No new component</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Action Buttons - Comparison View */}
@@ -527,7 +658,7 @@ export function AIComponentPopup({
                   size="lg"
                 >
                   <X className="h-5 w-5 mr-2" />
-                  Keep Current & Discard New
+                  {currentComponentData && currentComponentData.status !== 'empty' ? 'Keep Current & Discard New' : 'Discard Component'}
                 </Button>
                 <Button
                   onClick={handleAccept}
@@ -535,7 +666,7 @@ export function AIComponentPopup({
                   size="lg"
                 >
                   <Check className="h-5 w-5 mr-2" />
-                  Apply New & Replace Current
+                  {currentComponentData && currentComponentData.status !== 'empty' ? 'Apply New & Replace Current' : 'Apply Component'}
                 </Button>
               </div>
             </div>

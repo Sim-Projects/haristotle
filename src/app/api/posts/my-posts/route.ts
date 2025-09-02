@@ -59,8 +59,20 @@ export async function GET(request: Request) {
       prisma.post.count({ where }),
     ])
 
+    // Transform posts to include content fields for backward compatibility
+    const transformedPosts = posts.map(post => {
+      const content = post.publishedContent || post.draftContent
+      return {
+        ...post,
+        title: content?.title || 'Untitled',
+        excerpt: content?.excerpt || null,
+        featuredImage: content?.featuredImage || null,
+        content: content?.content || '',
+      }
+    })
+
     return NextResponse.json({
-      posts,
+      posts: transformedPosts,
       pagination: {
         page,
         limit,

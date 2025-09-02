@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { updatePostSchema } from '@/lib/validations/post'
-import { generateUniqueSlug, calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
+import { calculateReadingTime, extractExcerpt } from '@/lib/utils/slug'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -28,6 +28,8 @@ export async function GET(
             isVerified: true,
           },
         },
+        publishedContent: true,
+        draftContent: true,
         categories: {
           include: {
             category: true,
@@ -56,7 +58,17 @@ export async function GET(
       )
     }
 
-    return NextResponse.json(post)
+    // Transform the data to include content fields for backward compatibility
+    const content = post.publishedContent || post.draftContent
+    const transformedPost = {
+      ...post,
+      title: content?.title || 'Untitled',
+      content: content?.content || '',
+      excerpt: content?.excerpt || null,
+      featuredImage: content?.featuredImage || null,
+    }
+
+    return NextResponse.json(transformedPost)
   } catch (error) {
     console.error('Error fetching post:', error)
     return NextResponse.json(
@@ -122,7 +134,6 @@ export async function PUT(
           status: 'DRAFT',
           authorId: session.user.id,
           parentPostId: params.id, // Link to the original published post
-          slug: existingPost.slug + '-draft-' + Date.now(), // Temporary slug for the draft
         }
 
         // Calculate reading time and excerpt if content provided
@@ -291,26 +302,9 @@ export async function PUT(
     // Standard update for draft posts or unpublished posts
     const updateData: any = {}
 
-    // Update title and slug if title changed
+    // Update title if changed
     if (validatedData.title) {
       updateData.title = validatedData.title
-      
-      // Only update slug if title changed significantly
-      const baseSlug = validatedData.title
-      if (baseSlug !== existingPost.slug) {
-        updateData.slug = await generateUniqueSlug(
-          baseSlug,
-          async (slug: string) => {
-            const existing = await prisma.post.findFirst({
-              where: { 
-                slug,
-                NOT: { id: params.id }
-              },
-            })
-            return !!existing
-          }
-        )
-      }
     }
 
     // Update content and related fields

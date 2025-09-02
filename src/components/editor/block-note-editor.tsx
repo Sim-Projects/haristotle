@@ -149,6 +149,7 @@ export function BlockNoteEditor({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [content, onSave])
 
+
   if (!editor) {
     return (
       <div className="min-h-[500px] w-full flex items-center justify-center">

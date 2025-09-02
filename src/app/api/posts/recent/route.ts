@@ -14,6 +14,7 @@ export async function GET() {
             image: true,
           },
         },
+        publishedContent: true,
         categories: {
           include: {
             category: true,
@@ -31,7 +32,15 @@ export async function GET() {
       take: 12,
     })
 
-    return NextResponse.json(recentPosts)
+    // Transform posts to include content fields for backward compatibility
+    const transformedPosts = recentPosts.map(post => ({
+      ...post,
+      title: post.publishedContent?.title || 'Untitled',
+      excerpt: post.publishedContent?.excerpt || null,
+      featuredImage: post.publishedContent?.featuredImage || null,
+    }))
+
+    return NextResponse.json(transformedPosts)
   } catch (error) {
     console.error('Error fetching recent posts:', error)
     return NextResponse.json(

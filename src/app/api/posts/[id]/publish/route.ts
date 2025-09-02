@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { generateUniqueSlug } from '@/lib/utils/slug'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -54,6 +55,7 @@ export async function POST(
 
     // Publish the draft content
     const result = await prisma.$transaction(async (tx) => {
+
       // Create or update published content
       if (post.publishedContent) {
         // Update existing published content

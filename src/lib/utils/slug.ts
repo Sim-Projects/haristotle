@@ -1,34 +1,4 @@
 /**
- * Generate a URL-friendly slug from a string
- */
-export function generateSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '') // Remove special characters
-    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
-    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
-}
-
-/**
- * Generate a unique slug by checking against existing slugs
- */
-export async function generateUniqueSlug(
-  baseSlug: string,
-  checkExists: (slug: string) => Promise<boolean>,
-): Promise<string> {
-  let slug = generateSlug(baseSlug)
-  let counter = 1
-
-  while (await checkExists(slug)) {
-    slug = `${generateSlug(baseSlug)}-${counter}`
-    counter++
-  }
-
-  return slug
-}
-
-/**
  * Extract reading time from content (rough estimation)
  */
 export function calculateReadingTime(content: any): number {

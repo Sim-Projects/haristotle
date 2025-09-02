@@ -127,7 +127,7 @@ export function PostContent({ postId }: PostContentProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Edit className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800 font-medium">You can edit this post</span>
+                <span className="text-blue-800 font-medium">You can edit this post since you are the author.</span>
               </div>
               <a href={`/write/${post.id}`}>
                 <Button variant="outline" size="sm" className="cursor-pointer">
@@ -158,7 +158,7 @@ export function PostContent({ postId }: PostContentProps) {
           )}
           
           {/* Article Header */}
-          <div className="container mx-auto px-4 max-w-4xl">
+          <div className="container mx-auto px-4 max-w-6xl">
             <div className="py-12 relative z-10">
               {/* Categories */}
               {post.categories?.length > 0 && (
@@ -245,7 +245,7 @@ export function PostContent({ postId }: PostContentProps) {
         <Separator />
         
         {/* Article Content */}
-        <div className="container mx-auto px-4 max-w-4xl py-12">
+        <div className="container mx-auto px-4 max-w-6xl py-12">
           <div className="prose prose-lg max-w-none">
             {post.content ? (
               <BlockNoteEditor
@@ -266,7 +266,7 @@ export function PostContent({ postId }: PostContentProps) {
         
         {/* Tags */}
         {post.tags?.length > 0 && (
-          <div className="container mx-auto px-4 max-w-4xl py-8">
+          <div className="container mx-auto px-4 max-w-6xl py-8">
             <div className="flex flex-wrap gap-2">
               {post.tags.map(({ tag }: any) => (
                 <Link key={tag.id} href={`/tag/${tag.slug}`}>
@@ -282,7 +282,7 @@ export function PostContent({ postId }: PostContentProps) {
         <Separator />
         
         {/* Author Bio */}
-        <div className="container mx-auto px-4 max-w-4xl py-12">
+        <div className="container mx-auto px-4 max-w-6xl py-12">
           <Card>
             <CardContent className="p-8">
               <div className="flex items-start space-x-6">
@@ -321,7 +321,7 @@ export function PostContent({ postId }: PostContentProps) {
       {/* Related Posts */}
       {relatedPosts.length > 0 && (
         <section className="py-12">
-          <div className="container mx-auto px-4 max-w-4xl">
+          <div className="container mx-auto px-4 max-w-6xl">
             <h2 className="text-3xl font-bold mb-8">Related Articles</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {relatedPosts.map((relatedPost) => (

@@ -93,7 +93,6 @@ model User {
 // Content Models
 model Post {
   id             String      @id @default(cuid())
-  slug           String      @unique
   status         PostStatus  @default(DRAFT)
   publishedAt    DateTime?   @map("published_at")
   readingTime    Int?        @map("reading_time") // in minutes

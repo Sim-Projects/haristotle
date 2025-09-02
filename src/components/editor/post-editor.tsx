@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { DynamicBlockNoteEditor as BlockNoteEditor } from './dynamic-block-note-editor'
 import { AISandboxHelp } from './ai-sandbox-help'
-import { Save, Eye, Globe, Lock, Clock, User, Trash2, RotateCcw } from 'lucide-react'
+import { Save, Eye, Globe, Lock, Clock, User, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -192,8 +192,8 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
       setCanPublish(false)
       toast.success('Post published successfully!')
       
-      // Navigate to the published post
-      router.push(`/${post.slug}`)
+      // Navigate to the published post using window.location to avoid component conflicts
+      window.location.href = `/post/${publishedPost.id}`
     } catch (error) {
       console.error('Publish error:', error)
       toast.error('Failed to publish post')
@@ -235,13 +235,15 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
         toast.success('Draft discarded and post deleted')
         router.push('/dashboard')
       } else {
-        // Draft discarded, revert to published content
+        // Draft discarded, redirect based on whether post has published content
         const publishedContent = post.publishedContent
         if (publishedContent) {
-          setTitle(publishedContent.title)
-          setContent(publishedContent.content)
-          setHasUnsavedChanges(false)
-          toast.success('Draft discarded, reverted to published version')
+          toast.success('Draft discarded, redirecting to published version')
+          window.location.href = `/post/${post.id}`
+        } else {
+          // No published content, redirect to dashboard
+          toast.success('Draft discarded')
+          router.push('/dashboard')
         }
       }
     } catch (error) {
@@ -250,44 +252,28 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
     }
   }, [post?.id, post?.draftContent, post?.publishedContent, router])
 
-  // Reset draft to published function
-  const handleResetDraft = useCallback(async () => {
-    if (!post?.id || !post?.publishedContent) return
-
-    if (!confirm('Are you sure you want to reset the draft to match the published content? All current changes will be lost.')) {
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/posts/${post.id}/reset-draft`, {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to reset draft')
-      }
-
-      const result = await response.json()
-      
-      // Update UI to show reset content
-      setTitle(result.draftContent.title)
-      setContent(result.draftContent.content)
-      setHasUnsavedChanges(false)
-      toast.success('Draft reset to published content')
-    } catch (error) {
-      console.error('Reset draft error:', error)
-      toast.error('Failed to reset draft')
-    }
-  }, [post?.id, post?.publishedContent])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 relative">
+      {/* Publishing Overlay */}
+      {isPublishing && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <div className="bg-white rounded-lg p-8 shadow-xl flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">Publishing Post...</h3>
+              <p className="text-gray-600">Please wait while we publish your post</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b">
         {/* Unsaved changes indicator */}
         {hasUnsavedChanges && (
           <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
-            <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="max-w-6xl mx-auto flex items-center justify-between">
               <div className="flex items-center space-x-2 text-amber-800">
                 <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium">
@@ -300,7 +286,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
             </div>
           </div>
         )}
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -339,7 +325,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
                 variant="outline"
                 size="sm"
                 onClick={handlePreview}
-                disabled={!post?.id}
+                disabled={true}
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Preview Draft
@@ -355,19 +341,6 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
                 {isSaving ? 'Saving...' : 'Save Draft'}
               </Button>
 
-              {/* Reset Draft Button - only show if there's published content */}
-              {post?.publishedContent && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetDraft}
-                  disabled={isSaving}
-                  title="Reset draft to match published content"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-              )}
 
               {/* Discard Draft Button - only show if there's draft content */}
               {post?.draftContent && (
@@ -402,7 +375,7 @@ export function PostEditor({ post, isNew = false }: PostEditorProps) {
 
       {/* Editor Content */}
       <div className="transition-all duration-300 ease-in-out">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 py-8">
           <Card className="p-8">
           {/* Title Input */}
           <div className="mb-8">
