@@ -8,7 +8,7 @@ interface RouteContext {
 }
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   context: RouteContext
 ) {
   const params = await context.params

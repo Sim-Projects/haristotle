@@ -8,7 +8,7 @@ interface BlockNoteEditorProps {
   onChange?: (content: any) => void
   onSave?: (content: any, showToast?: boolean) => void
   editable?: boolean
-  viewMode?: 'published' | 'draft' | string
+  viewMode?: 'published' | 'draft'
   postId?: string
 }
 
@@ -17,7 +17,7 @@ const BlockNoteEditorComponent = dynamic(
   { ssr: false }
 )
 
-const LoadingComponent = ({ editable, viewMode }: { editable?: boolean, viewMode?: string }) => (
+const LoadingComponent = ({ editable, viewMode }: { editable?: boolean, viewMode?: 'published' | 'draft' }) => (
   <div className="min-h-[500px] w-full flex items-center justify-center">
     <div className="text-muted-foreground">
       {editable === false || viewMode === "published" ? "Loading article..." : "Loading editor..."}
